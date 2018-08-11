@@ -10,9 +10,9 @@ import {get_text_width} from "@jpmorganchase/perspective-viewer/src/js/utils.js"
  */
 export const FilterEditor = CellEditor.extend('FilterEditor', {
     name: "Filter",
-    template: '<div class="hypergrid-textfield">' +
-                '<div style="display:flex;flex-direction:row;overflow:hidden">' +
-                    '<select id="editor-filter-operator" style="padding-right:5px;"></select>' +
+    template: '<div class="filter-editor">' +
+                '<div>' +
+                    '<select id="editor-filter-operator"></select>' +
                     '<input id="editor-filter-operand" placeholder="Value" lang="{{locale}}" style="{style}}"></input>'+
                 '</div>' +
             '</div>',

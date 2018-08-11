@@ -63,12 +63,43 @@ perspective-hypergrid {
         box-shadow: 0 0 0px #000, 0 0 0px #000, 0 0 0px #000;
     }
 
-    div.finbar-horizontal div.thumb {
-        margin: -3px 2px;
-        height: 13px;
-        bottom: 4px;
-        background-color: rgba(158, 158, 158, 1);
-        box-shadow: 0 0 0px #000, 0 0 0px #000, 0 0 0px #000;
-        border-radius: 0px;
+    div.finbar-horizontal div.thumb { 
+        margin: -3px 2px; 
+        height: 13px; 
+        bottom: 4px; 
+        background-color: rgba(158, 158, 158, 1); 
+        box-shadow: 0 0 0px #000, 0 0 0px #000, 0 0 0px #000; 
+        border-radius: 0px; 
+    } 
+
+    div.filter-editor {
+        position: absolute;
+        background-color: white;
+    }
+
+    div.filter-editor > div {
+        display: flex;
+        flex-direction: row;
+        overflow: hidden; 
+        resize: horizontal; 
+        overflow: auto;
+        min-width: 100px;
+        padding: 1px;
+        padding-right: 5px;
+        background-color: white;
+        border: 1px solid #ccc;
+    }
+    
+    div.filter-editor  #editor-filter-operator {
+        border: 0px;
+        padding: 0px;
+        padding-right: 2px;
+        padding-left: 5px;
+    }
+
+    div.filter-editor  #editor-filter-operand {
+        width: 100%;
+        border: 0px;
+        padding: 0px;
     }
 }
