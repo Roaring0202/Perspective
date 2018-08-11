@@ -173,3 +173,16 @@ export function copy_to_clipboard(csv) {
 
 export const json_attribute = _attribute(() => ({}));
 export const array_attribute = _attribute(() => []);
+
+export function get_text_width(text, max = 0) {
+    let span = document.createElement('span');
+    // FIXME get these values form the stylesheet
+    span.style.visibility = 'hidden';
+    span.style.fontFamily = 'monospace';
+    span.style.fontSize = '12px';
+    span.innerHTML = text;
+    document.body.appendChild(span);
+    let width = `${Math.max(max, span.offsetWidth) + 20}px`;
+    document.body.removeChild(span);
+    return width;
+}

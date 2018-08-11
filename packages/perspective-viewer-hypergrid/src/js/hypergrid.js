@@ -11,11 +11,12 @@ const Hypergrid = require("fin-hypergrid");
 const Base = require("fin-hypergrid/src/Base");
 const groupedHeaderPlugin = require("fin-hypergrid-grouped-header-plugin");
 
-const Range = require("./Range");
-const perspectivePlugin = require("./perspective-plugin");
-const PerspectiveDataModel = require("./PerspectiveDataModel");
-const treeLineRendererPaint = require("./hypergrid-tree-cell-renderer").treeLineRendererPaint;
-const {psp2hypergrid} = require("./psp-to-hypergrid");
+const Range = require('./Range');
+const filterPlugin = require( './hypergrid-filter-plugin');
+const perspectivePlugin = require('./perspective-plugin');
+const PerspectiveDataModel = require('./PerspectiveDataModel');
+const treeLineRendererPaint = require('./hypergrid-tree-cell-renderer').treeLineRendererPaint;
+const {psp2hypergrid} = require('./psp-to-hypergrid');
 
 import {bindTemplate} from "@jpmorganchase/perspective-viewer/src/js/utils.js";
 
@@ -73,7 +74,7 @@ const base_grid_properties = {
     scrollbarHoverOff: "visible",
     rowHeaderCheckboxes: false,
     rowHeaderNumbers: false,
-    showFilterRow: true,
+    showFilterRow: false,
     showHeaderRow: true,
     showTreeColumn: false,
     singleRowSelectionMode: false,
@@ -332,6 +333,17 @@ async function grid_create(div, view, task) {
     };
 
     perspectiveHypergridElement.set_data(json, hidden, schema, tschema, rowPivots);
+    
+    const filterGrid = this.hypergrid.behavior.subgrids.lookup["filter"];
+    filterGrid.setFilters(JSON.parse(this.getAttribute('filters')));
+
+    const setFilterValue = filterGrid.setValue;
+    const viewer = this;
+    filterGrid.setValue = (x, y, value) => {
+        setFilterValue.call(filterGrid, x, y, value);
+        viewer.setAttribute('filters', JSON.stringify(Object.values(filterGrid.filters)));
+    };
+
     this.hypergrid.canvas.paintNow();
     let running = true;
     while (running) {
