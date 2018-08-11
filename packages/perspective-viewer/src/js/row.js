@@ -12,7 +12,7 @@ import _ from "underscore";
 import Awesomplete from "awesomplete";
 import "awesomplete/awesomplete.css";
 
-import {bindTemplate} from "./utils.js";
+import {bindTemplate, get_text_width} from "./utils.js";
 
 import perspective from "@jpmorganchase/perspective";
 import template from "../html/row.html";
@@ -45,19 +45,6 @@ global.disallowDrop = function disallowDrop(ev) {
         ev.currentTarget.classList.remove("dropping");
     }
 };
-
-function get_text_width(text, max = 0) {
-    let span = document.createElement("span");
-    // FIXME get these values form the stylesheet
-    span.style.visibility = "hidden";
-    span.style.fontFamily = "monospace";
-    span.style.fontSize = "12px";
-    span.innerHTML = text;
-    document.body.appendChild(span);
-    let width = `${Math.max(max, span.offsetWidth) + 20}px`;
-    document.body.removeChild(span);
-    return width;
-}
 
 const ICONS = {
     asc: "&#x2191;",
