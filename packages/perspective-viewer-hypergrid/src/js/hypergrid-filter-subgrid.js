@@ -19,7 +19,14 @@ export const FilterSubGrid =  require('datasaur-local').extend('FilterSubGrid',{
     name: 'filter',
     setFilters: function(filters){
         this.filters = filters.length && filters.length > 0 ? 
-                filters.reduce((map, filter) => { map[filter[0]] = filter; return map; }, {}) : {};
+                filters.reduce((map, filter) => {
+                    map[filter[0]] = map[filter[0]] || [];
+                    map[filter[0]].push( filter ); 
+                    return map; 
+                }, {}) : {};
+    },
+    getFilters: function(){
+        return Object.values(this.filters).reduce( (acc, val) => acc.concat(val), []);
     },
     getRowCount: function(){
         return this.grid.properties.showFilterRow ? 1:0;
@@ -32,40 +39,55 @@ export const FilterSubGrid =  require('datasaur-local').extend('FilterSubGrid',{
     },
     getValue: function(x,y){
         const header = this._getColumnHeader(x);
-        const filter = this.filters[header];
-        return filter != undefined ? filter[1] + ' ' + filter[2] : '';
+        const filters = this.filters[header];
+        return filters != undefined ? filters.reduce((value, filter)=>{
+                let ret = value ? value + ' & ' : '';
+                ret += filter[1] + ' ' + filter[2];
+                return ret;
+        }, '' ) : "";
     },
     setValue: function(x,y,value){
         const header = this._getColumnHeader(x);
 
-        const operator = value[0];
-        const operand = value[1];
-
-        if (!value || !operand){
-            delete this.filters[header];
-            return;
+        const filtersToSet = [];
+        value.forEach(element => {
+            const operator = element[0];
+            const operand = element[1];
+    
+            if (!operand){
+                delete this.filters[header];
+                return;
+            }
+    
+            const column = this.grid.behavior.getActiveColumn(x);
+            let type = column.type;
+            let val = undefined;
+            switch (type) {
+                case "float":
+                    val = parseFloat(operand);
+                    break;
+                case "integer":
+                    val = parseInt(operand);
+                    break;
+                case "boolean":
+                    val = operand.toLowerCase().indexOf('true') > -1;
+                    break;
+                case "string":
+                default:
+                    val = operand;
+            }
+            
+            const filter = [ header, operator, val ];
+            filtersToSet.push(filter);    
+        });
+        if (filtersToSet.length > 0)
+        {
+            this.filters[header] = filtersToSet;
         }
-
-        const column = this.grid.behavior.getActiveColumn(x);
-        let type = column.type;
-        let val = undefined;
-        switch (type) {
-            case "float":
-                val = parseFloat(operand);
-                break;
-            case "integer":
-                val = parseInt(operand);
-                break;
-            case "boolean":
-                val = operand.toLowerCase().indexOf('true') > -1;
-                break;
-            case "string":
-            default:
-                val = operand;
+        else{
+            delete this.filters[header];
         }
         
-        const filter = [ header, operator, val ];
-        this.filters[header] = filter;
     },
     getRow: function(y){
         const row = [];

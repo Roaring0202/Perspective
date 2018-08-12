@@ -341,7 +341,7 @@ async function grid_create(div, view, task) {
     const viewer = this;
     filterGrid.setValue = (x, y, value) => {
         setFilterValue.call(filterGrid, x, y, value);
-        viewer.setAttribute('filters', JSON.stringify(Object.values(filterGrid.filters)));
+        viewer.setAttribute('filters', JSON.stringify(filterGrid.getFilters()));
     };
 
     this.hypergrid.canvas.paintNow();

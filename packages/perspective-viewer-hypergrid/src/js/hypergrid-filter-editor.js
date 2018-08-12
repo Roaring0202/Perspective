@@ -10,16 +10,19 @@ import {get_text_width} from "@jpmorganchase/perspective-viewer/src/js/utils.js"
  */
 export const FilterEditor = CellEditor.extend('FilterEditor', {
     name: "Filter",
-    template: '<div class="filter-editor">' +
-                '<div>' +
-                    '<select id="editor-filter-operator"></select>' +
-                    '<input id="editor-filter-operand" placeholder="Value" lang="{{locale}}" style="{style}}"></input>'+
-                '</div>' +
-            '</div>',
+    template: '<div class="editor-filter">' +
+                '<div>' + 
+                    '<div>' +
+                        '<select id="editor-filter-operator"></select>' +
+                        '<input id="editor-filter-operand" placeholder="Value" lang="{{locale}}" style="{style}}"></input>'+
+                    '</div>' +
+                '</div>' + 
+              '</div>',
     
     initialize: function(grid, options) {
         const type = options.columnProperties.type;
-        this.initialValue = options.filter ? [options.filter[1],options.filter[2]] : [perspective.FILTER_DEFAULTS[type], ''];
+        const filter = options.filter ? [options.filter[0][1], options.filter[0][2]] : [perspective.FILTER_DEFAULTS[type], ''];
+        this.initialValue = filter;
         this.operator = this.el.querySelector('#editor-filter-operator');
         this.operand = this.el.querySelector('#editor-filter-operand');
         this.input = this.operand;
@@ -28,7 +31,7 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
         this.input.onclick = (e) => {
             e.stopPropagation(); // ignore clicks in the text FIELD
         };
-        this.operator.addEventListener('change', event => {
+        this.operator.addEventListener('change', () => {
             this.operator.style.width = get_text_width(this.operator.value);
         });
         this.input.onfocus = (e) => {
@@ -64,9 +67,9 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
             default:
         }
         
-        this.operator.value = options.filter ? options.filter[0].toString() : perspective.FILTER_DEFAULTS[type];
+        this.operator.value = filter[0].toString();
         this.operator.style.width = get_text_width(this.operator.value);
-        this.operand.value = options.filter ? options.filter[1].toString(): "";
+        this.operand.value = filter[1].toString();
     },
 
     setEditorValue: function(value) {
@@ -77,7 +80,7 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
         this.input.value = this.localizer.format(operand);
     },
     getEditorValue: function() {
-        return [ this.operator.value, this.localizer.parse(this.input.value)];
+        return [[ this.operator.value, this.localizer.parse(this.input.value)]];
     },
     
 
