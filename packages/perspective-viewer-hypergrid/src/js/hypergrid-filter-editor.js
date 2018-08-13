@@ -2,7 +2,7 @@
 const CellEditor = require('fin-hypergrid/src/cellEditors/CellEditor');
 import perspective from "@jpmorganchase/perspective";
 import {get_text_width} from "@jpmorganchase/perspective-viewer/src/js/utils.js";
-
+import "./editor-filter-element.js";
 
 /**
  * @constructor
@@ -11,77 +11,63 @@ import {get_text_width} from "@jpmorganchase/perspective-viewer/src/js/utils.js"
 export const FilterEditor = CellEditor.extend('FilterEditor', {
     name: "Filter",
     template: '<div class="editor-filter">' +
-                '<div>' + 
-                    '<div>' +
-                        '<select id="editor-filter-operator"></select>' +
-                        '<input id="editor-filter-operand" placeholder="Value" lang="{{locale}}" style="{style}}"></input>'+
-                    '</div>' +
+                '<div id="editor-filter-container" lang="{{locale}}" style="{style}}">' + 
                 '</div>' + 
               '</div>',
-    
-    initialize: function(grid, options) {
-        const type = options.columnProperties.type;
-        const filter = options.filter ? [options.filter[0][1], options.filter[0][2]] : [perspective.FILTER_DEFAULTS[type], ''];
-        this.initialValue = filter;
-        this.operator = this.el.querySelector('#editor-filter-operator');
-        this.operand = this.el.querySelector('#editor-filter-operand');
-        this.input = this.operand;
-        this.errors = 0;
-        
-        this.input.onclick = (e) => {
-            e.stopPropagation(); // ignore clicks in the text FIELD
-        };
-        this.operator.addEventListener('change', () => {
-            this.operator.style.width = get_text_width(this.operator.value);
-        });
-        this.input.onfocus = (e) => {
-            var target = e.target;
-            this.el.style.outline = this.outline = this.outline || window.getComputedStyle(target).outline;
-            target.style.outline = 0;
-        };
-        this.input.onblur = () => {
-            this.el.style.outline = 0;
-        };
 
-        switch (type) {
-            case "float":
-            case "integer":
-                this.operator.innerHTML = perspective.TYPE_FILTERS.float.map(agg => 
-                    `<option value="${agg}">${agg}</option>`
-                ).join('');
-                break;
-            case "boolean":
-                this.operator.innerHTML = perspective.TYPE_FILTERS.boolean.map(agg => 
-                    `<option value="${agg}">${agg}</option>`
-                ).join('');
-                break;
-            case 'date':
-                this.operator.innerHTML = perspective.TYPE_FILTERS.date.map(agg => 
-                    `<option value="${agg}">${agg}</option>`
-                ).join('');
-                break;
-            case "string":
-                this.operator.innerHTML = perspective.TYPE_FILTERS.string.map(agg => 
-                    `<option value="${agg}">${agg}</option>`
-                ).join('');
-            default:
-        }
+    set value(val){
+        this._value = val;
+    },
+
+    get value(){
+        return this._value;
+    },
+
+    initialize: function(grid, options) {
+        this.type = options.columnProperties.type;
         
-        this.operator.value = filter[0].toString();
-        this.operator.style.width = get_text_width(this.operator.value);
-        this.operand.value = filter[1].toString();
+        if (options.filter && options.filter.length > 0){
+            const value = [];
+            options.filter.forEach(element => {
+                value.push({operator: element[1], operand: element[2]});
+            });
+            this._value = value;
+        }
+        else{
+            this._value = [{operator: perspective.FILTER_DEFAULTS[this.type], operand: ''}];
+        }
+        this.initialValue = this.value;
+        this.input = this;
+        this.errors = 0;
+       
     },
 
     setEditorValue: function(value) {
-        const operator = value[0];
-        const operand = value[1];
-        this.operator.value = operator;
-        this.operator.style.width = get_text_width(this.operator.value);
-        this.input.value = this.localizer.format(operand);
+        const type = this.type;
+        const container = this.el.querySelector( '#editor-filter-container');
+        value.forEach(filter => {
+            let input = document.createElement("hypergrid-filter-input");
+            input.setAttribute('value', JSON.stringify( filter ) );
+            input.setAttribute('type', type);
+            input.addEventListener("filter-selected", ()=>{
+                console.log( 'filter selected');
+            });
+            container.appendChild(input);
+        });
     },
     getEditorValue: function() {
-        return [[ this.operator.value, this.localizer.parse(this.input.value)]];
+        const inputElements = this.el.querySelectorAll( 'hypergrid-filter-input');
+        var value = [];
+        inputElements.forEach(element=>{
+            const filter = JSON.parse(element.value);
+            value.push([filter.operator, filter.operand]);
+        });
+        return value;
     },
+    focus: function(){
+        const inputElements = this.el.querySelector( 'hypergrid-filter-input');
+        inputElements.focus();
+    }
     
 
 });
