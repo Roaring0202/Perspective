@@ -63,6 +63,12 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
         container.insertBefore(input, addFilter);
     },
     setEditorValue: function(value) {
+        const inputs = this.el.querySelectorAll( 'hypergrid-filter-input');
+        const container = this.el.querySelector( '#editor-filter-container');
+
+        inputs.forEach( input =>{
+            container.removeChild(input);
+        });
         value.forEach(filter => {
             this._addFilterRow(filter);
         });
