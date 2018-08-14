@@ -1,7 +1,6 @@
 
 const CellEditor = require('fin-hypergrid/src/cellEditors/CellEditor');
 import perspective from "@jpmorganchase/perspective";
-import {get_text_width} from "@jpmorganchase/perspective-viewer/src/js/utils.js";
 import "./editor-filter-element.js";
 
 /**
@@ -12,6 +11,7 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
     name: "Filter",
     template: '<div class="editor-filter">' +
                 '<div id="editor-filter-container" lang="{{locale}}" style="{style}}">' + 
+                '<span id="editor-filter-add">+</span>' +
                 '</div>' + 
               '</div>',
 
@@ -34,32 +34,44 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
             this._value = value;
         }
         else{
-            this._value = [{operator: perspective.FILTER_DEFAULTS[this.type], operand: ''}];
+            this._value = [this._getDefaultFilter()];
         }
         this.initialValue = this.value;
         this.input = this;
         this.errors = 0;
        
+        const add = this.el.querySelector( '#editor-filter-add');
+        add.addEventListener( 'click', () => {
+            this._addFilterRow( this._getDefaultFilter() );
+        });
     },
 
-    setEditorValue: function(value) {
-        const type = this.type;
+    _getDefaultFilter: function(){
+        return {operator: perspective.FILTER_DEFAULTS[this.type], operand: ''};
+    },
+
+    _addFilterRow: function(filter){
         const container = this.el.querySelector( '#editor-filter-container');
+        const addFilter = this.el.querySelector( '#editor-filter-add');
+        let input = document.createElement("hypergrid-filter-input");
+        input.setAttribute('type', this.type);
+        input.setAttribute('value', JSON.stringify( filter ) );
+
+        input.addEventListener("filter-selected", ()=>{
+            console.log( 'filter selected');
+        });
+        container.insertBefore(input, addFilter);
+    },
+    setEditorValue: function(value) {
         value.forEach(filter => {
-            let input = document.createElement("hypergrid-filter-input");
-            input.setAttribute('value', JSON.stringify( filter ) );
-            input.setAttribute('type', type);
-            input.addEventListener("filter-selected", ()=>{
-                console.log( 'filter selected');
-            });
-            container.appendChild(input);
+            this._addFilterRow(filter);
         });
     },
     getEditorValue: function() {
         const inputElements = this.el.querySelectorAll( 'hypergrid-filter-input');
         var value = [];
         inputElements.forEach(element=>{
-            const filter = JSON.parse(element.value);
+            const filter = element.value;
             value.push([filter.operator, filter.operand]);
         });
         return value;
