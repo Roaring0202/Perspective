@@ -30,10 +30,11 @@ class FilterInput extends HTMLElement {
         const operator = filter.operator || perspective.FILTER_DEFAULTS[this.getAttribute('type')];
         if (filter_dropdown.value !== filter.operator) {
             filter_dropdown.value = operator;
+            filter_dropdown.setAttribute('value', operator);
         }
         filter_dropdown.style.width = get_text_width(operator);
         const filter_input = this.querySelector('#editor-filter-operand');
-        const operand = filter.operand ? filter.operand.toString() : "";
+        const operand = (filter.operand != null && filter.operand != undefined) ? filter.operand.toString() : "";
         if (!this._initialized) {
             filter_input.value = operand;
         }
@@ -70,6 +71,7 @@ class FilterInput extends HTMLElement {
         const filter = JSON.parse(this.getAttribute('value'));
         const operator = filter.operator || perspective.FILTER_DEFAULTS[this.getAttribute('type')];
         filter_dropdown.value = operator;
+        filter_dropdown.setAttribute('value', operator);
         let filter_operand = this.querySelector('#editor-filter-operand');
         this._callback = event => this._update_filter(event);
         filter_operand.addEventListener('keyup', event => {
@@ -110,6 +112,7 @@ class FilterInput extends HTMLElement {
         let debounced_filter = _.debounce(event => this._update_filter(event), 50);
         this.value = this.getAttribute('value');
         operator.addEventListener('change', () => {
+            operator.setAttribute( 'value', operator.value);
             operator.style.width = get_text_width(operator.value);
             const filter_input = this.querySelector('#editor-filter-operand');
             filter_input.style.minWidth = get_text_width("" + operand.value, 30);    

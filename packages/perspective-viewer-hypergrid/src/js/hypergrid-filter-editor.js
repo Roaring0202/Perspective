@@ -39,7 +39,7 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
         this.initialValue = this.value;
         this.input = this;
         this.errors = 0;
-       
+        this.editing = false;
         const add = this.el.querySelector( '#editor-filter-add');
         add.addEventListener( 'click', () => {
             this._addFilterRow( this._getDefaultFilter() );
@@ -59,19 +59,22 @@ export const FilterEditor = CellEditor.extend('FilterEditor', {
 
         input.addEventListener("filter-selected", ()=>{
             console.log( 'filter selected');
+            this.editing = true;
         });
         container.insertBefore(input, addFilter);
     },
     setEditorValue: function(value) {
-        const inputs = this.el.querySelectorAll( 'hypergrid-filter-input');
-        const container = this.el.querySelector( '#editor-filter-container');
+        if (!this.editing){
+            const inputs = this.el.querySelectorAll( 'hypergrid-filter-input');
+            const container = this.el.querySelector( '#editor-filter-container');
 
-        inputs.forEach( input =>{
-            container.removeChild(input);
-        });
-        value.forEach(filter => {
-            this._addFilterRow(filter);
-        });
+            inputs.forEach( input =>{
+                container.removeChild(input);
+            });
+            value.forEach(filter => {
+                this._addFilterRow(filter);
+            });
+        }
     },
     getEditorValue: function() {
         const inputElements = this.el.querySelectorAll( 'hypergrid-filter-input');

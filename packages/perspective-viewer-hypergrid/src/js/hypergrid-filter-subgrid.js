@@ -9,6 +9,8 @@
 
 import perspective from "@jpmorganchase/perspective";
 
+const STANDALONE_OPERATORS = ["is nan", "is not nan"];
+
 export const FilterSubGrid =  require('datasaur-local').extend('FilterSubGrid',{
     initialize: function(datasaur, options){
         this.grid = options.grid;
@@ -40,11 +42,17 @@ export const FilterSubGrid =  require('datasaur-local').extend('FilterSubGrid',{
     getValue: function(x,y){
         const header = this._getColumnHeader(x);
         const filters = this.filters[header];
-        return filters != undefined ? filters.reduce((value, filter)=>{
-                let ret = value ? value + ' & ' : '';
-                ret += filter[1] + ' ' + filter[2];
-                return ret;
-        }, '' ) : "";
+        if (filters != undefined && filters.length > 0){
+            let filter = filters[0];
+            let value = filter[1] + (STANDALONE_OPERATORS.includes(filter[1]) ? '' : ' ' + filter[2]);
+            if (filters.length > 1){
+                value += " & ...";
+            }
+            return value;
+        }
+        else{
+            return "";
+        }
     },
     setValue: function(x,y,value){
         const header = this._getColumnHeader(x);
@@ -52,9 +60,12 @@ export const FilterSubGrid =  require('datasaur-local').extend('FilterSubGrid',{
         const filtersToSet = [];
         value.forEach(element => {
             const operator = element[0];
-            const operand = element[1];
+            let operand = element[1];
     
-            if (!operand){
+            if (STANDALONE_OPERATORS.includes(operator)){
+                operand = operand || 0;
+            }
+            else if (operand == null || operand == undefined || operand === ''){
                 delete this.filters[header];
                 return;
             }

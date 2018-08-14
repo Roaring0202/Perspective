@@ -86,6 +86,11 @@ perspective-hypergrid {
         background-color: white;
         border: 1px solid #ccc;
     }
+
+    #editor-filter-container{
+        display: flex;
+        flex-direction: column;
+    }
 }
 
 hypergrid-filter-input {
@@ -101,6 +106,11 @@ hypergrid-filter-input {
         padding: 0px;
         padding-right: 2px;
         padding-left: 5px;
+    }
+
+    #editor-filter-operator[value="is nan"] + #editor-filter-operand,
+    #editor-filter-operator[value="is not nan"] + #editor-filter-operand{
+        display: none;
     }
 
     #editor-filter-operand {
