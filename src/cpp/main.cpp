@@ -21,6 +21,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <perspective/sym_table.h>
+#include <perspective/date_parser.h>
 #include <codecvt>
 #include <boost/format.hpp>
 #include <boost/optional.hpp>
@@ -967,6 +968,7 @@ t_dtype
 infer_type(val x, val date_validator) {
     std::string jstype = x.typeOf().as<std::string>();
     t_dtype t = t_dtype::DTYPE_STR;
+    t_date_parser zzz("test");
 
     // Unwrap numbers inside strings
     val x_number = val::global("Number").call<val>("call", val::object(), x);
