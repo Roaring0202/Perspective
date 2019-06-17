@@ -6,24 +6,19 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
+
 #pragma once
-#if defined(PSP_ENABLE_PYTHON)
-
+#ifdef PSP_ENABLE_PYTHON
 #include <perspective/first.h>
-#include <perspective/raw_types.h>
-#include <perspective/base.h>
-#include <perspective/exports.h>
-#define NO_IMPORT_ARRAY
-#define PY_ARRAY_UNIQUE_SYMBOL _perspectiveNumpy
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 
-namespace py = boost::python;
-namespace np = boost::python::numpy;
+namespace py = pybind11;
 
-namespace perspective
-{
+namespace perspective {
+namespace binding {
 
-np::dtype get_numpy_typenum_from_dtype(t_dtype dtype);
-
-} // end namespace perspective
+}
+}
 
 #endif

@@ -24,9 +24,7 @@ function docker(image = "emsdk") {
 try {
     // install dependencies
     let cmd = "cd python/table && \
-    python3.7 -m pip install -r requirements.txt &&\
-    python3.7 -m pip install -U flake8 nose2 codecov &&\
-    python3.7 -m nose2 -v perspective --with-coverage --coverage=perspective";
+     python3 -m pytest -v perspective --cov=perspective --full-trace";
 ;
     if (process.env.PSP_DOCKER) {
         execute(docker("python") + ' bash -c "' + cmd + '"');

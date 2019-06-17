@@ -22,7 +22,8 @@ function docker(image = "emsdk") {
 }
 
 try {
-    let cmd = "cd python/table && python3.7 setup.py build";
+    let cmd = "cd python/table &&\
+    python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {
         execute(docker("python") + " bash -c \"" + cmd + '\"');

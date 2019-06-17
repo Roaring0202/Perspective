@@ -23,8 +23,7 @@ function docker(image = "emsdk") {
 
 try {
     // install dependencies
-    let cmd = "cd python/perspective && python3 -m pip install -r requirements.txt &&\
-    python3 -m pip install -U pytest pytest-cov flake8 pylint codecov pylantern &&\
+    let cmd = "cd python/perspective &&\
     python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {

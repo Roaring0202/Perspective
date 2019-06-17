@@ -9,6 +9,7 @@ from setuptools import setup, Extension
 from distutils.version import LooseVersion
 from codecs import open
 from setuptools.command.build_ext import build_ext
+import io
 import os
 import os.path
 import os
@@ -25,8 +26,34 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     requires = f.read().split()
 
+try:
+    # non dev install
+    import perspective.core
+except ImportError:
+    try:
+        if not os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'perspective', 'perspective', 'core')):
+            raise Exception('Must install perspective-python')
+        if os.path.exists(os.path.abspath(os.path.join('perspective', 'core'))):
+            os.unlink(os.path.abspath(os.path.join('perspective', 'core')))
+        os.symlink(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'perspective', 'perspective', 'core')), os.path.abspath(os.path.join('perspective', 'core')), target_is_directory=True)
+    except ImportError:
+        raise Exception('Must install perspective-python')
+
 if sys.version_info.major < 3 or sys.version_info.minor < 7:
     raise Exception('Must be python3.7 or above')
+
+
+def get_version(file, name='__version__'):
+    """Get the version of the package from the given file by
+    executing it and extracting the given `name`.
+    """
+    path = os.path.realpath(file)
+    version_ns = {}
+    with io.open(path, encoding="utf8") as f:
+        exec(f.read(), {}, version_ns)
+    return version_ns[name]
+
+version = get_version(os.path.join(here, 'perspective', 'core', '_version.py'))
 
 
 class CMakeExtension(Extension):
@@ -96,11 +123,10 @@ class CMakeBuild(build_ext):
 
 setup(
     name='perspective-python.table',
-    version='0.1.3',
+    version=version,
     description='Analytics library',
     long_description=long_description,
     url='https://github.com/finos/perspective',
-    download_url='https://github.com/timkpaine/aat/archive/v0.0.2.tar.gz',
     author='Tim Paine',
     author_email='timothy.k.paine@gmail.com',
     license='Apache 2.0',
