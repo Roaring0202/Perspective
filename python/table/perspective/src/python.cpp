@@ -217,7 +217,6 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
         for (auto name : names) {
             // infer type for each column
             t_dtype type = get_data_type(data, format, name, date_validator);
-            std::cout << "Name:" << name << " Type:" << type << std::endl;
             types.push_back(type);
         }
     }
@@ -916,7 +915,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
     // Create output schema - contains only columns to be displayed to the user
     t_schema output_schema(column_names, data_types); // names + types might have been mutated at this point after implicit index removal
 
-     std::uint32_t row_count = accessor.attr("row_count")().cast<std::int32_t>();
+    std::uint32_t row_count = accessor.attr("row_count")().cast<std::int32_t>();
     t_data_table data_table(output_schema);
     data_table.init();
     data_table.extend(row_count);
@@ -1023,10 +1022,10 @@ make_view_config(const t_schema& schema, t_val date_parser, t_val config) {
     auto column_pivots = config.attr("get_column_pivots")().cast<std::vector<std::string>>();
     auto columns = config.attr("get_columns")().cast<std::vector<std::string>>();
     auto sort = config.attr("get_sort")().cast<std::vector<std::vector<std::string>>>();
-    auto filter_op = config.attr("filter_op").cast<std::string>();
+    auto filter_op = config.attr("get_filter_op")().cast<std::string>();
 
     // aggregates require manual parsing - std::maps read from JS are empty
-    auto p_aggregates= config.attr("aggregates").cast<std::vector<std::vector<std::string>>>();
+    auto p_aggregates= config.attr("get_aggregates")().cast<std::vector<std::vector<std::string>>>();
     tsl::ordered_map<std::string, std::string> aggregates;
 
     for (const auto& vec : p_aggregates) {
@@ -1042,7 +1041,7 @@ make_view_config(const t_schema& schema, t_val date_parser, t_val config) {
     }
 
     // construct filters with filter terms, and fill the vector of tuples
-    auto p_filter = config.attr("get_filter").cast<std::vector<std::vector<t_val>>>();
+    auto p_filter = config.attr("get_filter")().cast<std::vector<std::vector<t_val>>>();
     std::vector<std::tuple<std::string, std::string, std::vector<t_tscalar>>> filter;
 
     for (auto f : p_filter) {
@@ -1066,12 +1065,12 @@ make_view_config(const t_schema& schema, t_val date_parser, t_val config) {
     view_config.init(schema);
 
     // set pivot depths if provided
-    if (! config["row_pivot_depth"].is_none()) {
-        view_config.set_row_pivot_depth(config["row_pivot_depth"].cast<std::int32_t>());
+    if (! config.attr("row_pivot_depth").is_none()) {
+        view_config.set_row_pivot_depth(config.attr("row_pivot_depth").cast<std::int32_t>());
     }
 
-    if (! config["column_pivot_depth"].is_none()) {
-        view_config.set_column_pivot_depth(config["column_pivot_depth"].cast<std::int32_t>());
+    if (! config.attr("column_pivot_depth").is_none()) {
+        view_config.set_column_pivot_depth(config.attr("column_pivot_depth").cast<std::int32_t>());
     }
 
     return view_config;
@@ -1082,6 +1081,7 @@ std::shared_ptr<View<CTX_T>>
 make_view(std::shared_ptr<Table> table, std::string name, std::string separator,
     t_val view_config, t_val date_parser) {
     auto schema = table->get_schema();
+
     t_view_config config = make_view_config<t_val>(schema, date_parser, view_config);
 
     auto ctx = make_context<CTX_T>(table, schema, config, name);

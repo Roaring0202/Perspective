@@ -105,7 +105,7 @@ PYBIND11_MODULE(libbinding, m)
      */
     // Bind a View for each context type
 
-    py::class_<View<t_ctx0>>(m, "View_ctx0")
+    py::class_<View<t_ctx0>, std::shared_ptr<View<t_ctx0>>>(m, "View_ctx0")
         .def(py::init<std::shared_ptr<Table>, std::shared_ptr<t_ctx0>, std::string, std::string,
             t_view_config>())
         .def("sides", &View<t_ctx0>::sides)
@@ -127,7 +127,7 @@ PYBIND11_MODULE(libbinding, m)
         .def("get_column_dtype", &View<t_ctx0>::get_column_dtype)
         .def("is_column_only", &View<t_ctx0>::is_column_only);
 
-    py::class_<View<t_ctx1>>(m, "View_ctx1")
+    py::class_<View<t_ctx1>, std::shared_ptr<View<t_ctx1>>>(m, "View_ctx1")
         .def(py::init<std::shared_ptr<Table>, std::shared_ptr<t_ctx1>, std::string, std::string,
             t_view_config>())
         .def("sides", &View<t_ctx1>::sides)
@@ -152,7 +152,7 @@ PYBIND11_MODULE(libbinding, m)
         .def("get_column_dtype", &View<t_ctx1>::get_column_dtype)
         .def("is_column_only", &View<t_ctx1>::is_column_only);
 
-    py::class_<View<t_ctx2>>(m, "View_ctx2")
+    py::class_<View<t_ctx2>, std::shared_ptr<View<t_ctx2>>>(m, "View_ctx2")
         .def(py::init<std::shared_ptr<Table>, std::shared_ptr<t_ctx2>, std::string, std::string,
             t_view_config>())
         .def("sides", &View<t_ctx2>::sides)
