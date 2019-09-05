@@ -39,11 +39,11 @@ try {
     let cmd;
 
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/${target} && python3 -m pytest -v perspective --cov=perspective --full-trace`;
+        cmd = `cd python/${target} && python3 -m pytest -v perspective --cov=perspective`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
         const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && python3 -m pytest -v perspective --cov=perspective --full-trace`;
+        cmd = `cd ${python_path} && python3 -m pytest -v perspective --cov=perspective`;
         execute(cmd);
     }
 } catch (e) {

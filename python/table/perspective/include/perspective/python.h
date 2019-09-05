@@ -362,28 +362,13 @@ PYBIND11_MODULE(libbinding, m)
 
     /******************************************************************************
      *
-     * Construct `std::vector`s
-     */
-    // TODO: these shouldnt be needed in python
-    // m.def("make_string_vector", &make_vector<std::string>);
-    // m.def("make_val_vector", &make_vector<t_val>);
-    // m.def("make_2d_string_vector", &make_vector<std::vector<std::string>>);
-    // m.def("make_2d_val_vector", &make_vector<std::vector<t_val>>);
-
-    /******************************************************************************
-     *
      * Perspective defs
      */
-    m.def("make_table", &make_table_py);
+    m.def("make_table", &make_table_py, py::return_value_policy::copy);
     m.def("make_computed_table", &make_computed_table_py);
-    // TODO: these shouldnt be needed in python
-    // m.def("scalar_vec_to_val", &scalar_vec_to_val);
-    // m.def("scalar_vec_to_string", &scalar_vec_to_string);
-    // m.def("table_add_computed_column", &table_add_computed_column<t_val>);
-    // m.def("col_to_js_typed_array", &col_to_js_typed_array);
-    m.def("make_view_zero", &make_view_ctx0);
-    m.def("make_view_one", &make_view_ctx1);
-    m.def("make_view_two", &make_view_ctx2);
+    m.def("make_view_zero", &make_view_ctx0, py::return_value_policy::copy);
+    m.def("make_view_one", &make_view_ctx1, py::return_value_policy::copy);
+    m.def("make_view_two", &make_view_ctx2, py::return_value_policy::copy);
     m.def("get_data_slice_zero", &get_data_slice_ctx0);
     m.def("get_from_data_slice_zero", &get_from_data_slice_ctx0);
     m.def("get_data_slice_one", &get_data_slice_ctx1);

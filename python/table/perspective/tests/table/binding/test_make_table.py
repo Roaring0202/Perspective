@@ -16,7 +16,6 @@ from perspective.table import _PerspectiveAccessor
 
 class TestMakeTable(object):
     def test_make_table(self):
-        p = _PerspectiveAccessor([{"a": 1, "b": 2}, {"a": 3, "b": 3}])
-        x = make_table(None, p, None, 4294967295, '', t_op.OP_INSERT, False, False)
-        print(x.size())
-        print(x.get_schema())
+        data = _PerspectiveAccessor([{"a": 1, "b": 2}, {"a": 3, "b": 3}])
+        tbl = make_table(None, data, None, 4294967295, '', t_op.OP_INSERT, False, False)
+        assert tbl.size() == 2 
