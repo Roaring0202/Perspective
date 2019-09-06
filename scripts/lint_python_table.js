@@ -13,7 +13,7 @@ const execute = cmd => execSync(cmd, {stdio: "inherit"});
 
 function docker(image = "emsdk") {
     console.log(`-- Creating ${image} docker image`);
-    let cmd = "docker run --rm -it";
+    let cmd = "docker run -it";
     if (process.env.PSP_CPU_COUNT) {
         cmd += ` --cpus="${parseInt(process.env.PSP_CPU_COUNT)}.0"`;
     }

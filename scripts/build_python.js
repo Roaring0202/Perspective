@@ -13,7 +13,7 @@ const execute = cmd => execSync(cmd, {stdio: "inherit"});
 
 function docker(image = "emsdk") {
     console.log(`-- Creating ${image} docker image`);
-    let cmd = "docker run --rm -it";
+    let cmd = "docker run -it";
     if (process.env.PSP_CPU_COUNT) {
         cmd += ` --cpus="${parseInt(process.env.PSP_CPU_COUNT)}.0"`;
     }
@@ -24,6 +24,8 @@ function docker(image = "emsdk") {
 try {
     // install dependencies
     let cmd = "cd python/perspective &&\
+    python3 -m pip install -r requirements.txt &&\
+    python3 -m pip install -r pytest pytest-cov mock flake8 codecov &&\
     python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {
