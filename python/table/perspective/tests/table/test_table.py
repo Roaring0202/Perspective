@@ -8,6 +8,7 @@
 
 from perspective.table import Table
 
+data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
 class TestTable(object):
     def test_empty_table(self):
@@ -18,10 +19,14 @@ class TestTable(object):
 
     def test_table_int(self):
         x = [{"a": 1, "b": 2}, {"a": 3, "b": 3}]
-
+        
         p = Table(x)
         print(p.size())
         print(p.schema())
+        
+    def test_table_columns(self):
+        tbl = Table(data)
+        assert tbl.columns() == ["a", "b"]
 
     def test_table_nones(self):
         x = [{"a": 1, "b": None}, {"a": None, "b": 2}]

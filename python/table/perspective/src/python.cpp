@@ -866,6 +866,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
 
     // Check if index is valid after getting column names
     bool table_initialized = has_value(table);
+    std::shared_ptr<t_pool> pool;
     std::shared_ptr<Table> tbl;
     std::uint32_t offset;
 
@@ -873,6 +874,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
     if (table_initialized) {
         // Get a reference to the Table, and update its metadata
         tbl = table.cast<std::shared_ptr<Table>>();
+        pool = tbl->get_pool();
         tbl->set_column_names(column_names);
         tbl->set_data_types(data_types);
         offset = tbl->get_offset();
@@ -896,7 +898,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
             }
         }
     } else {
-        std::shared_ptr<t_pool> pool = std::make_shared<t_pool>();
+        pool = std::make_shared<t_pool>();
         tbl = std::make_shared<Table>(pool, column_names, data_types, limit, index);
         offset = 0;
     }
@@ -932,6 +934,9 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
 
     // calculate offset, limit, and set the gnode
     tbl->init(data_table, row_count, op);
+
+    // FIXME: replicate JS _clear_process etc.
+    pool->_process();
     return tbl;
 }
 
