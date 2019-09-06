@@ -12,46 +12,33 @@ data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
 class TestTable(object):
     def test_empty_table(self):
-        x = []
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
+        tbl = Table([])
+        assert tbl.size() == 0 
 
     def test_table_int(self):
-        x = [{"a": 1, "b": 2}, {"a": 3, "b": 3}]
-        
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
-        
+        tbl = Table(data)
+        assert tbl.size() == 2
+
+    def test_table_nones(self):
+        none_data = [{"a": 1, "b": None}, {"a": None, "b": 2}]
+        tbl = Table(none_data)
+        assert tbl.size() == 2
+
+    def test_table_bool(self):
+        bool_data = [{"a": True, "b": False}, {"a": True, "b": True}]
+        tbl = Table(bool_data)
+        assert tbl.size() == 2
+
+    def test_table_float(self):
+        float_data = [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": 3.1}]
+        tbl = Table(float_data)
+        assert tbl.size() == 2
+
+    def test_table_str(self):
+        str_data = [{"a": "b", "b": "b"}, {"a": "3", "b": "3"}]
+        tbl = Table(str_data)
+        assert tbl.size() == 2 
+
     def test_table_columns(self):
         tbl = Table(data)
         assert tbl.columns() == ["a", "b"]
-
-    def test_table_nones(self):
-        x = [{"a": 1, "b": None}, {"a": None, "b": 2}]
-
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
-
-    def test_table_bool(self):
-        x = [{"a": True, "b": False}, {"a": True, "b": True}]
-
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
-
-    def test_table_float(self):
-        x = [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": 3.1}]
-
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
-
-    def test_table_str(self):
-        x = [{"a": "b", "b": "b"}, {"a": "3", "b": "3"}]
-
-        p = Table(x)
-        print(p.size())
-        print(p.schema())

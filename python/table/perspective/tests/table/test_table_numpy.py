@@ -12,7 +12,5 @@ from perspective.table import Table
 
 class TestTableNumpy(object):
     def test_empty_table(self):
-        x = []
-        p = Table(x)
-        print(p.size())
-        print(p.schema())
+        tbl = Table([])
+        assert tbl.size() == 0
