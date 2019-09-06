@@ -13,6 +13,10 @@ class _PerspectiveDateValidator(object):
     def __init__(self):
         pass
 
+    def check(self, obj):
+        # TODO
+        return False
+
 
 class _PerspectiveAccessor(object):
     '''Internal class to manage perspective table state'''
