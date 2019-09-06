@@ -15,6 +15,10 @@ class _PerspectiveDateValidator(object):
     def __init__(self):
         pass # TODO: implement
 
+    def check(self, obj):
+        # TODO
+        return False
+
 
 class _PerspectiveAccessor(object):
     '''Internal class to manage perspective table state'''
@@ -90,6 +94,9 @@ class Table(object):
         self._index = config.get("index", "")
         # FIXME: views and tables created lose reference to the View/Table in C++
         self._table = make_table(None, self._accessor, None, self._limit, self._index, t_op.OP_INSERT, False, False)
+
+    def load(self, data_or_schema):
+        pass
 
     def size(self):
         return self._table.size()
