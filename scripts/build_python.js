@@ -12,6 +12,7 @@ const resolve = require("path").resolve;
 const execSync = require("child_process").execSync;
 const execute = cmd => execSync(cmd, {stdio: "inherit"});
 
+const IS_DOCKER = process.env.PSP_DOCKER;
 const VALID_TARGETS = ["node", "table"];
 const HAS_TARGET = args.indexOf("--target") != -1;
 
@@ -37,12 +38,17 @@ try {
     }
 
     let cmd;
-    let build_cmd =
-        "python3 -m pip install -r requirements.txt --target=`pwd` &&\
-        python3 -m pip install pytest pytest-cov mock flake8 codecov --target=`pwd` &&\
-        python3 setup.py build";
+    let pip_target = "";
 
-    if (process.env.PSP_DOCKER) {
+    if (IS_DOCKER) {
+        pip_target = " --target=`pwd`";
+    }
+
+    let build_cmd = `python3 -m pip install -r requirements.txt ${pip_target} &&\
+        python3 -m pip install pytest pytest-cov mock flake8 codecov ${pip_target} &&\
+        python3 setup.py build`;
+
+    if (IS_DOCKER) {
         cmd = `cd python/${target} && ${build_cmd}`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
