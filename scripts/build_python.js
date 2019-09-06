@@ -37,13 +37,17 @@ try {
     }
 
     let cmd;
+    let build_cmd =
+        "python3 -m pip install -r requirements.txt --target=`pwd` &&\
+        python3 -m pip install pytest pytest-cov mock flake8 codecov --target=`pwd` &&\
+        python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/${target} && python3 setup.py build`;
+        cmd = `cd python/${target} && ${build_cmd}`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
         const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && python3 setup.py build`;
+        cmd = `cd ${python_path} && ${build_cmd}`;
         execute(cmd);
     }
 } catch (e) {
