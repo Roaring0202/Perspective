@@ -39,7 +39,6 @@ try {
     let cmd;
     let build_cmd =
         "python3 -m pip install -r requirements.txt --target=`pwd` &&\
-        python3 -m pip install pytest pytest-cov mock flake8 codecov --target=`pwd` &&\
         python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {
