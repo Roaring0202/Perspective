@@ -80,17 +80,17 @@ class ViewConfig(object):
         return self._filter
 
 
-class Perspective(object):
-    def __init__(self):
-        pass
-
-    def load(self, data_or_schema, limit=4294967295, index=""):
+class Table(object):
+    def __init__(self, data_or_schema, limit=4294967295, index=""):
         self._accessor = _PerspectiveAccessor(data_or_schema)
         self._table = make_table(None, self._accessor, None, limit, index, t_op.OP_INSERT, False, False)
         config = ViewConfig({})
         self._view = make_view_zero(self._table, "test", "", config, self._accessor._date_validator)
         self._view1 = make_view_one(self._table, "test", "", config, self._accessor._date_validator)
         self._view2 = make_view_two(self._table, "test", "", config, self._accessor._date_validator)
+
+    def load(self, data_or_schema):
+        pass
 
     def size(self):
         return self._table.size()
