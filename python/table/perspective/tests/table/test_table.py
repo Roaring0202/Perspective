@@ -12,9 +12,13 @@ import numpy as np
 import pandas as pd
 from perspective.table import Table 
 
+data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
 class TestTable(object):
-    def test_table(self):
-        data = [{"a": 1, "b": 2}, {"a": 3, "b": 3}]
+    def test_table_construct(self):
         tbl = Table(data)
         assert tbl.size() == 2 
+
+    def test_table_columns(self):
+        tbl = Table(data)
+        assert tbl.columns() == ["a", "b"]

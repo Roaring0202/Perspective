@@ -364,11 +364,11 @@ PYBIND11_MODULE(libbinding, m)
      *
      * Perspective defs
      */
-    m.def("make_table", &make_table_py, py::return_value_policy::copy);
+    m.def("make_table", &make_table_py);
     m.def("make_computed_table", &make_computed_table_py);
-    m.def("make_view_zero", &make_view_ctx0, py::return_value_policy::copy);
-    m.def("make_view_one", &make_view_ctx1, py::return_value_policy::copy);
-    m.def("make_view_two", &make_view_ctx2, py::return_value_policy::copy);
+    m.def("make_view_zero", &make_view_ctx0);
+    m.def("make_view_one", &make_view_ctx1);
+    m.def("make_view_two", &make_view_ctx2);
     m.def("get_data_slice_zero", &get_data_slice_ctx0);
     m.def("get_from_data_slice_zero", &get_from_data_slice_ctx0);
     m.def("get_data_slice_one", &get_data_slice_ctx1);

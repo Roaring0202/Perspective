@@ -97,7 +97,18 @@ class Table(object):
     def schema(self):
         return self._table.get_schema()
 
+    def columns(self, computed = False):
+        return [column for column in self.schema().columns() if column != "psp_okey"]
+
+    def update(self, data):
+        pass
+
+    def remove(self, data):
+        pass
+
     def view(self, config = {}):
+        if len(config.get("columns", [])) == 0:
+            config["columns"] = self.columns()
         return View(self, config)
 
 class View(object):
@@ -141,4 +152,7 @@ class View(object):
     def num_columns(self):
         """The number of aggregated columns in the View. This is affected by the `column-pivots` that are applied to the View."""
         return self._view.num_columns()
+    
+    def schema(self):
+        return self._view.schema()
 

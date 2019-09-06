@@ -13,16 +13,17 @@ import pandas as pd
 from perspective.table import Table 
 
 
+data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
+
 class TestView(object):
+
     def test_view_zero(self):
-        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
-        view = tbl.view({})
+        view = tbl.view()
         assert view.num_rows() == 2
         assert view.num_columns() == 2
 
     def test_view_one(self):
-        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
         view = tbl.view({
             "row_pivots": ["a"]
@@ -31,7 +32,6 @@ class TestView(object):
         assert view.num_columns() == 2
 
     def test_view_two(self):
-        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
         view = tbl.view({
             "row_pivots": ["a"],
@@ -39,3 +39,10 @@ class TestView(object):
         })
         assert view.num_rows() == 2
         assert view.num_columns() == 2
+
+    def test_zero_view_schema(self):
+        tbl = Table(data)
+        view = tbl.view()
+        schema = view.schema()
+        print(schema)
+
