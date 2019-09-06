@@ -22,7 +22,6 @@ function docker(image = "emsdk") {
 }
 
 try {
-    // dont need to reinstall deps
     let cmd = "cd python/perspective &&\
         python3 -m pytest -v perspective --cov=perspective";
     if (process.env.PSP_DOCKER) {

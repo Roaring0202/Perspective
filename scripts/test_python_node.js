@@ -22,11 +22,8 @@ function docker(image = "emsdk") {
 }
 
 try {
-    // install dependencies
-
     let cmd = "cd python/node && \
      python3 -m pytest -v perspective --cov=perspective";
-;
     if (process.env.PSP_DOCKER) {
         execute(docker("python") + ' bash -c "' + cmd + '"');
     } else {
