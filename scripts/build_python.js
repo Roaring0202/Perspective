@@ -24,7 +24,7 @@ function docker(image = "emsdk") {
 try {
     let cmd = "cd python/perspective &&\
     python3 -m pip install -r requirements.txt --target=`pwd` &&\
-    python3 -m pip install -r pytest pytest-cov mock flake8 codecov  --target=`pwd` &&\
+    python3 -m pip install pytest pytest-cov mock flake8 codecov  --target=`pwd` &&\
     python3 setup.py build";
 
     if (process.env.PSP_DOCKER) {
