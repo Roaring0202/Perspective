@@ -12,27 +12,22 @@
 #include <perspective/base.h>
 #include <perspective/binding.h>
 #include <perspective/python.h>
+#include "Python.h"
 #include <chrono>
 #include <ctime>
 
 namespace perspective {
 namespace binding {
-/******************************************************************************
- *
- * Utility
- */
-template <>
-bool
-has_value(t_val item) {
-    return !item.is_none();
-}
+
+static py::object WARN = py::module::import("logging").attr("warn");
+static py::object CRITICAL = py::module::import("logging").attr("critical");
 
 /******************************************************************************
  *
  * Date Parsing
  */
 t_date
-jsdate_to_t_date(t_val date) {
+pythondate_to_t_date(t_val date) {
     return t_date(date.attr("year").cast<std::int32_t>(),
         date.attr("month").cast<std::int32_t>(),
         date.attr("day").cast<std::int32_t>());
@@ -70,11 +65,9 @@ get_column_names(t_val data, std::int32_t format) {
             }
             if (old_size != names.size()){
                 if (max_check == 50) {
-                    std::cout << "Data parse warning: Array data has inconsistent rows"
-                              << std::endl;
+                    WARN("Data parse warning: Array data has inconsistent rows");
                 }
-                std::cout << "Extended from " << old_size << "to " << names.size()
-                          << std::endl;
+                WARN("Extended from %d to %d",  old_size, names.size());
                 max_check *= 2;
             }
         }
@@ -171,7 +164,7 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
     std::vector<t_dtype> types;
 
     if (names.size() == 0) {
-        std::cerr << "Cannot determine data types without column names!" << std::endl;
+        WARN("Cannot determine data types without column names!");
         return types;
     }
 
@@ -181,29 +174,72 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
 
         for (auto tup : data_dict) {
             auto name = tup.first.cast<std::string>();
-            auto value = tup.second.cast<std::string>();
+            auto value = py::str(tup.second.cast<py::object>().attr("__name__")).cast<std::string>();
             t_dtype type;
 
             if (name == "__INDEX__") {
-                std::cout << "Warning: __INDEX__ column should not be in the Table schema." << std::endl;
+                WARN("Warning: __INDEX__ column should not be in the Table schema.");
                 continue;
             }
 
-            if (value == "integer") {
+            // TODO consider refactor
+            if (value == "int") {
+                // Python int
+                type = t_dtype::DTYPE_INT64;
+            } else if (value == "int8") {
+                // Numpy int8
+                type = t_dtype::DTYPE_INT8;
+            } else if (value == "int16") {
+                // Numpy int16
+                type = t_dtype::DTYPE_INT16;
+            } else if (value == "int32") {
+                // Numpy int32
                 type = t_dtype::DTYPE_INT32;
+            } else if (value == "int64") {
+                // Numpy int64
+                type = t_dtype::DTYPE_INT64;
             } else if (value == "float") {
+                // Python float
                 type = t_dtype::DTYPE_FLOAT64;
-            } else if (value == "string") {
+            } else if (value == "float16") {
+                // TODO
+                // Numpy float16
+                // type = t_dtype::DTYPE_FLOAT16;
+            } else if (value == "float32") {
+                // Numpy float32
+                type = t_dtype::DTYPE_FLOAT32;
+            } else if (value == "float64") {
+                // Numpy float64
+                type = t_dtype::DTYPE_FLOAT64;
+            } else if (value == "float128") {
+                // TODO
+                // Numpy float128
+                // type = t_dtype::DTYPE_FLOAT128;
+            } else if (value == "str") {
+                // Python unicode str
                 type = t_dtype::DTYPE_STR;
-            } else if (value == "boolean") {
+            } else if (value == "bool") {
+                // Python bool
+                type = t_dtype::DTYPE_BOOL;
+            } else if (value == "bool8") {
+                // Numpy bool8
                 type = t_dtype::DTYPE_BOOL;
             } else if (value == "datetime") {
+                // Python datetime
+                // TODO inheritance
+                type = t_dtype::DTYPE_TIME;
+            } else if (value == "datetime64") {
+                // Numpy datetime64
+                type = t_dtype::DTYPE_TIME;
+            } else if (value == "Timestamp") {
+                // Pandas timestamp
                 type = t_dtype::DTYPE_TIME;
             } else if (value == "date") {
+                // Python date
+                // TODO inheritance
                 type = t_dtype::DTYPE_DATE;
             } else {
-                PSP_COMPLAIN_AND_ABORT(
-                    "Unknown type '" + value + "' for key '" + name + "'");
+                CRITICAL("Unknown type '%s' for key '%s'", value, name);
             }
             types.push_back(type);
         }
@@ -310,7 +346,7 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
 //                 continue;
 //             }
 
-//             col->set_nth(i, jsdate_to_t_date(item));
+//             col->set_nth(i, pythondate_to_t_date(item));
 //         }
 //     }
 // }
@@ -470,7 +506,7 @@ _fill_col_int64(t_data_accessor accessor, t_data_table& tbl, std::shared_ptr<t_c
 
             double fval = item.cast<double>();
             if (isnan(fval)) {
-                std::cout << "Promoting to string" << std::endl;
+                WARN("Promoting to string");
                 tbl.promote_column(name, DTYPE_STR, i, false);
                 col = tbl.get_column(name);
                 _fill_col_string(
@@ -532,7 +568,7 @@ set_column_nth(t_column* col, t_uindex idx, t_val value) {
             break;
         }
         case DTYPE_DATE: {
-            // col->set_nth<t_date>(idx, jsdate_to_t_date(value), STATUS_VALID);
+            // col->set_nth<t_date>(idx, pythondate_to_t_date(value), STATUS_VALID);
             break;
         }
         case DTYPE_TIME: {
@@ -717,13 +753,13 @@ _fill_col_numeric(t_data_accessor accessor, t_data_table& tbl,
                     // inference checked the entire column/we could reset parsing.
                     double fval = item.cast<double>();
                     if (fval > 2147483647 || fval < -2147483648) {
-                        std::cout << "Promoting to float" << std::endl;
+                        WARN("Promoting to float");
                         tbl.promote_column(name, DTYPE_FLOAT64, i, true);
                         col = tbl.get_column(name);
                         type = DTYPE_FLOAT64;
                         col->set_nth(i, fval);
                     } else if (isnan(fval)) {
-                        std::cout << "Promoting to string" << std::endl;
+                        WARN("Promoting to string");
                         tbl.promote_column(name, DTYPE_STR, i, false);
                         col = tbl.get_column(name);
                         _fill_col_string(
@@ -865,7 +901,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
     }
 
     // Check if index is valid after getting column names
-    bool table_initialized = has_value(table);
+    bool table_initialized = !table.is_none();
     std::shared_ptr<t_pool> pool;
     std::shared_ptr<Table> tbl;
     std::uint32_t offset;
@@ -891,8 +927,7 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
             auto current_schema = current_data_table->get_schema();
             for (auto idx = 0; idx < current_schema.m_types.size(); ++idx) {
                 if (data_types[idx] == DTYPE_INT64) {
-                    std::cout << "Promoting int64 `" << column_names[idx] << "`"
-                              << std::endl;
+                    WARN("Promoting int64 '" + column_names[idx] + "'");
                     current_gnode->promote_column(column_names[idx], DTYPE_INT64);
                 }
             }
@@ -959,9 +994,9 @@ is_valid_filter(t_dtype type, t_val date_parser, t_filter_op comp, t_val filter_
         return true;
     } else if (type == DTYPE_DATE || type == DTYPE_TIME) {
         t_val parsed_date = date_parser.attr("parse")(filter_term);
-        return has_value(parsed_date);
+        return !parsed_date.is_none();
     } else {
-        return has_value(filter_term);
+        return !filter_term.is_none();
     }
 };
 
@@ -998,7 +1033,7 @@ make_filter_term(t_dtype column_type, t_val date_parser, const std::string colum
                 } break;
                 case DTYPE_DATE: {
                     t_val parsed_date = date_parser.attr("parse")(filter_term);
-                    terms.push_back(mktscalar(jsdate_to_t_date(parsed_date)));
+                    terms.push_back(mktscalar(pythondate_to_t_date(parsed_date)));
                 } break;
                 case DTYPE_TIME: {
                     t_val parsed_date = date_parser.attr("parse")(filter_term);
