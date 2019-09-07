@@ -49,29 +49,33 @@ namespace binding {
 
     std::shared_ptr<Table> make_computed_table_py(std::shared_ptr<Table> table, t_val computed);
 
-    std::shared_ptr<View<t_ctx0>> make_view_ctx0(std::shared_ptr<Table> table, std::string name,
-        std::string separator, t_val view_config, t_val date_parser);
+    std::shared_ptr<View<t_ctx0>> make_view_ctx0(std::shared_ptr<Table> table, const std::string& name,
+        const std::string& separator, t_val view_config, t_val date_parser);
 
-    std::shared_ptr<View<t_ctx1>> make_view_ctx1(std::shared_ptr<Table> table, std::string name,
-        std::string separator, t_val view_config, t_val date_parser);
+    std::shared_ptr<View<t_ctx1>> make_view_ctx1(std::shared_ptr<Table> table, const std::string& name,
+        const std::string& separator, t_val view_config, t_val date_parser);
 
-    std::shared_ptr<View<t_ctx2>> make_view_ctx2(std::shared_ptr<Table> table, std::string name,
-        std::string separator, t_val view_config, t_val date_parser);
+    std::shared_ptr<View<t_ctx2>> make_view_ctx2(std::shared_ptr<Table> table, const std::string& name,
+        const std::string& separator, t_val view_config, t_val date_parser);
 
 
+    // TODO: implement
     std::shared_ptr<t_data_slice<t_ctx0>> get_data_slice_ctx0(std::shared_ptr<View<t_ctx0>> view,
         std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
         std::uint32_t end_col);
+
     t_val get_from_data_slice_ctx0(std::shared_ptr<t_data_slice<t_ctx0>> data_slice, t_uindex ridx, t_uindex cidx);
 
     std::shared_ptr<t_data_slice<t_ctx1>> get_data_slice_ctx1(std::shared_ptr<View<t_ctx1>> view,
         std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
         std::uint32_t end_col);
+
     t_val get_from_data_slice_ctx1(std::shared_ptr<t_data_slice<t_ctx1>> data_slice, t_uindex ridx, t_uindex cidx);
 
     std::shared_ptr<t_data_slice<t_ctx2>> get_data_slice_ctx2(std::shared_ptr<View<t_ctx2>> view,
         std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
         std::uint32_t end_col);
+        
     t_val get_from_data_slice_ctx2(std::shared_ptr<t_data_slice<t_ctx2>> data_slice, t_uindex ridx, t_uindex cidx);
 }
 }
