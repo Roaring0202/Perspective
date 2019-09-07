@@ -18,4 +18,4 @@ class TestMakeTable(object):
     def test_make_table(self):
         data = _PerspectiveAccessor([{"a": 1, "b": 2}, {"a": 3, "b": 3}])
         tbl = make_table(None, data, None, 4294967295, '', t_op.OP_INSERT, False, False)
-        assert tbl.size() == 2 
+        assert tbl.size() == 2

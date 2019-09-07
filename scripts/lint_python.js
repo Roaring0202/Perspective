@@ -15,6 +15,8 @@ const execute = cmd => execSync(cmd, {stdio: "inherit"});
 const VALID_TARGETS = ["node", "table"];
 const HAS_TARGET = args.indexOf("--target") != -1;
 
+const IS_FIX = args.indexOf("--fix") != -1;
+
 function docker(target = "perspective", image = "emsdk") {
     console.log(`-- Creating ${image} docker image`);
     let cmd = "docker run --rm -it";
@@ -36,13 +38,17 @@ try {
     }
 
     let cmd;
+    let lint_cmd = `python3 -m flake8 perspective && echo "lint passed!"`;
+    let fix_cmd = `python3 -m pip install autopep8 &&\
+        autopep8 -v --in-place --aggressive --recursive --exclude build . &&\
+        echo "autopep8 formatting complete!"`;
 
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/${target} && python3 -m flake8 perspective && echo OK`;
+        cmd = `cd python/${target} && ${IS_FIX ? fix_cmd : lint_cmd}`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
         const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && python3 -m flake8 perspective && echo OK`;
+        cmd = `cd ${python_path} && ${IS_FIX ? fix_cmd : lint_cmd}`;
         execute(cmd);
     }
 } catch (e) {

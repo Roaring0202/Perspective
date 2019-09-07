@@ -93,6 +93,9 @@
         "fix:less": "prettier --tab-width 4 --write packages/**/src/less/*.less",
         "fix:html": "html-beautify packages/**/src/html/*.html -r",
         "fix:json": "prettier --tab-width 4 --write **/package.json",
+        "fix:python": "node scripts/lint_python.js --fix",
+        "fix:python:table": "node scripts/lint_python.js --fix --target table",
+        "fix:python:node": "node scripts/lint_python.js --fix --target node",
         "fix": "npm-run-all --silent fix:*",
         "toggle_puppeteer": "node scripts/toggle_puppeteer.js"
     },

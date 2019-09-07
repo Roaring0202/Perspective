@@ -10,10 +10,11 @@ from perspective.table import Table
 
 data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
+
 class TestTable(object):
     def test_empty_table(self):
         tbl = Table([])
-        assert tbl.size() == 0 
+        assert tbl.size() == 0
 
     def test_table_int(self):
         tbl = Table(data)
@@ -37,7 +38,7 @@ class TestTable(object):
     def test_table_str(self):
         str_data = [{"a": "b", "b": "b"}, {"a": "3", "b": "3"}]
         tbl = Table(str_data)
-        assert tbl.size() == 2 
+        assert tbl.size() == 2
 
     def test_table_columns(self):
         tbl = Table(data)

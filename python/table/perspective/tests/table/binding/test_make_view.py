@@ -29,8 +29,7 @@ class TestMakeView(object):
         })
         tbl = make_table(None, accessor, None, 4294967295, '', t_op.OP_INSERT, False, False)
         view = make_view_one(tbl, "view1", "|", view_config, accessor._date_validator)
-        assert view.num_rows() == 1 
-
+        assert view.num_rows() == 1
 
     def test_make_view_two(self):
         accessor = _PerspectiveAccessor([{"a": 1, "b": 2}, {"a": 3, "b": 4}])

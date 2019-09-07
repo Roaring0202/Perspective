@@ -8,12 +8,14 @@
 from random import random
 from perspective.table.libbinding import make_table, make_view_zero, make_view_one, make_view_two, t_op, string_vector, string_vector_vector, t_val_vector_vector
 
-DEFAULT_SEPARATOR_STRING = "|" # TODO: move to a constants.py
+DEFAULT_SEPARATOR_STRING = "|"  # TODO: move to a constants.py
+
 
 class _PerspectiveDateValidator(object):
     '''Internal Class for date validation'''
+
     def __init__(self):
-        pass # TODO: implement
+        pass  # TODO: implement
 
     def check(self, obj):
         # TODO
@@ -22,6 +24,7 @@ class _PerspectiveDateValidator(object):
 
 class _PerspectiveAccessor(object):
     '''Internal class to manage perspective table state'''
+
     def __init__(self, data_or_schema):
         self._data_or_schema = data_or_schema
         self._format = \
@@ -54,6 +57,7 @@ class _PerspectiveAccessor(object):
 
 class ViewConfig(object):
     '''Defines the parameters of a View object'''
+
     def __init__(self, config):
         self._row_pivots = string_vector(config.get('row-pivots', []))
         self._column_pivots = string_vector(config.get('column-pivots', []))
@@ -62,7 +66,7 @@ class ViewConfig(object):
         self._sort = string_vector_vector(config.get('sort', []))
         self._filter = t_val_vector_vector(config.get('filter', []))
         self._filter_op = config.get('filter_op', "and")
-        self.row_pivot_depth = None # TODO: implement for 1 and 2-sided views
+        self.row_pivot_depth = None  # TODO: implement for 1 and 2-sided views
         self.column_pivot_depth = None
 
     def get_row_pivots(self):
@@ -88,7 +92,7 @@ class ViewConfig(object):
 
 
 class Table(object):
-    def __init__(self, data_or_schema, config = {}):
+    def __init__(self, data_or_schema, config={}):
         self._accessor = _PerspectiveAccessor(data_or_schema)
         self._limit = config.get("limit", 4294967295)
         self._index = config.get("index", "")
@@ -104,7 +108,7 @@ class Table(object):
     def schema(self):
         return self._table.get_schema()
 
-    def columns(self, computed = False):
+    def columns(self, computed=False):
         return [column for column in self.schema().columns() if column != "psp_okey"]
 
     def update(self, data):
@@ -113,15 +117,16 @@ class Table(object):
     def remove(self, data):
         pass
 
-    def view(self, config = {}):
+    def view(self, config={}):
         if len(config.get("columns", [])) == 0:
             config["columns"] = self.columns()
         return View(self, config)
 
+
 class View(object):
-    def __init__(self, Table, config = {}):
+    def __init__(self, Table, config={}):
         """Private constructor for a View object - use the Table.view() method to create Views.
-        
+
         A View object represents a specific transform (configuration or pivot,
         filter, sort, etc) configuration on an underlying Table. A View
         receives all updates from the Table from which it is derived, and
@@ -133,7 +138,7 @@ class View(object):
         self._table = Table
         self._config = ViewConfig(config)
         self._sides = self.sides()
-        
+
         if self._sides == 0:
             # FIXME: weird date validator passing
             self._view = make_view_zero(self._table._table, str(random()), DEFAULT_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
@@ -159,7 +164,6 @@ class View(object):
     def num_columns(self):
         """The number of aggregated columns in the View. This is affected by the `column-pivots` that are applied to the View."""
         return self._view.num_columns()
-    
+
     def schema(self):
         return self._view.schema()
-

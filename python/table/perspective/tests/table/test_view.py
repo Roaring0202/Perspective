@@ -10,10 +10,11 @@ import os
 import os.path
 import numpy as np
 import pandas as pd
-from perspective.table import Table 
+from perspective.table import Table
 
 
 data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
+
 
 class TestView(object):
 
@@ -45,4 +46,3 @@ class TestView(object):
         view = tbl.view()
         schema = view.schema()
         print(schema)
-
