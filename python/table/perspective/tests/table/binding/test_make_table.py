@@ -6,12 +6,8 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 
-import os
-import os.path
-import numpy as np
-import pandas as pd
 from perspective.table.libbinding import make_table, t_op
-from perspective.table import _PerspectiveAccessor
+from perspective.table._accessor import _PerspectiveAccessor
 
 
 class TestMakeTable(object):

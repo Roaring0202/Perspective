@@ -6,12 +6,9 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 
-import os
-import os.path
-import numpy as np
-import pandas as pd
 from perspective.table.libbinding import make_table, t_op, make_view_zero, make_view_one, make_view_two
-from perspective.table import _PerspectiveAccessor, _PerspectiveDateValidator, ViewConfig
+from perspective.table.view_config import ViewConfig
+from perspective.table._accessor import _PerspectiveAccessor
 
 
 class TestMakeView(object):

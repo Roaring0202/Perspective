@@ -7,8 +7,8 @@
 #
 
 from perspective.table import Table
+from datetime import date, datetime
 
-data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
 
 class TestTable(object):
@@ -17,6 +17,7 @@ class TestTable(object):
         assert tbl.size() == 0
 
     def test_table_int(self):
+        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
         assert tbl.size() == 2
 
@@ -41,5 +42,22 @@ class TestTable(object):
         assert tbl.size() == 2
 
     def test_table_columns(self):
+        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
         assert tbl.columns() == ["a", "b"]
+
+    def test_table_columnar(self):
+        data = {"a": [1, 2, 3], "b": [4, 5, 6]}
+        tbl = Table(data)
+        assert tbl.columns() == ["a", "b"]
+        assert tbl.size() == 3
+
+    def test_table_schema(self):
+        data = {"a": int,
+                "b": float,
+                "c": str,
+                "d": bool,
+                "e": date,
+                "f": datetime}
+        tbl = Table(data)
+        assert tbl.columns() == ["a", "b", "c", "d", "e", "f"]
