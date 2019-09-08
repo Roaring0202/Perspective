@@ -37,7 +37,11 @@ try {
     }
 
     let cmd;
-    let build_cmd = "python3 setup.py build";
+    let build_cmd =
+        "python3 -m pip install -r requirements.txt &&\
+        python3 setup.py build &&\
+        python3 -m flake8 perspective && echo OK &&\
+        python3 -m pytest -v perspective --cov=perspective";
 
     if (process.env.PSP_DOCKER) {
         cmd = `cd python/${target} && ${build_cmd}`;
