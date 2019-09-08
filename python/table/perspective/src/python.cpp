@@ -19,7 +19,7 @@
 namespace perspective {
 namespace binding {
 
-static py::object WARN = py::module::import("logging").attr("warn");
+static py::object WARN = py::module::import("logging").attr("warning");
 static py::object CRITICAL = py::module::import("logging").attr("critical");
 
 /******************************************************************************

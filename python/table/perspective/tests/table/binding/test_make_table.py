@@ -6,16 +6,12 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 
-import os
-import os.path
-import numpy as np
-import pandas as pd
 from perspective.table.libbinding import make_table, t_op
-from perspective.table import _PerspectiveAccessor
+from perspective.table._accessor import _PerspectiveAccessor
 
 
 class TestMakeTable(object):
     def test_make_table(self):
         data = _PerspectiveAccessor([{"a": 1, "b": 2}, {"a": 3, "b": 3}])
         tbl = make_table(None, data, None, 4294967295, '', t_op.OP_INSERT, False, False)
-        assert tbl.size() == 2 
+        assert tbl.size() == 2
