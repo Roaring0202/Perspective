@@ -16,11 +16,13 @@
 #include <chrono>
 #include <ctime>
 
+// https://github.com/pybind/pybind11/issues/1598
+// no global py::objects
+#define WARN py::module::import("logging").attr("warning")
+#define CRITICAL py::module::import("logging").attr("critical")
+
 namespace perspective {
 namespace binding {
-
-static py::object WARN = py::module::import("logging").attr("warning");
-static py::object CRITICAL = py::module::import("logging").attr("critical");
 
 /******************************************************************************
  *
