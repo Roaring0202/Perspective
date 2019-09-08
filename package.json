@@ -86,7 +86,7 @@
         "start": "lerna run start --stream --scope",
         "precommit": "npm run lint",
         "publish_python": "python3 setup.py sdist upload -r pypi",
-        "lint": "npm-run-all --silent lint:*",
+        "lint": "npm-run-all --silent lint:* lint_python",
         "lint:eslint": "eslint packages/*/src/**/*.js packages/*/test/**/*.js examples/*/*.js",
         "lint_python": "node scripts/lint_python.js",
         "lint_python:table": "node scripts/lint_python.js --target table",
