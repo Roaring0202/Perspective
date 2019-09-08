@@ -1,12 +1,9 @@
 # perspective-python
 Python APIs for [perspective](https://github.com/finos/perspective) front end
 
-# This package now lives partially under [Perspective](https://github.com/finos/perspective)
-
-[![Build Status](https://travis-ci.org/timkpaine/perspective-python.svg?branch=master)](https://travis-ci.org/timkpaine/perspective-python)
-[![GitHub issues](https://img.shields.io/github/issues/timkpaine/perspective-python.svg)]()
-[![codecov](https://codecov.io/gh/timkpaine/perspective-python/branch/master/graph/badge.svg)](https://codecov.io/gh/timkpaine/perspective-python)
-[![BCH compliance](https://bettercodehub.com/edge/badge/timkpaine/perspective-python?branch=master)](https://bettercodehub.com/)
+[![Build Status](https://travis-ci.org/finos/perspective.svg?branch=master)](https://travis-ci.org/finos/perspective)
+[![GitHub issues](https://img.shields.io/github/issues/finos/perspective.svg)]()
+[![codecov](https://codecov.io/gh/finos/perspective/branch/master/graph/badge.svg)](https://codecov.io/gh/finos/perspective)
 [![PyPI](https://img.shields.io/pypi/v/perspective-python.svg)](https://pypi.python.org/pypi/perspective-python)
 [![PyPI](https://img.shields.io/pypi/l/perspective-python.svg)](https://pypi.python.org/pypi/perspective-python)
 [![Docs](https://img.shields.io/readthedocs/perspective-python.svg)](https://perspective-python.readthedocs.io)
