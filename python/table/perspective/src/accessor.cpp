@@ -71,6 +71,8 @@ infer_type(t_val x, t_val date_validator) {
 
     if (x.is_none()) {
         t = t_dtype::DTYPE_NONE;
+    } else if (py::isinstance<py::bool_>(x) || type_string == "bool") {
+        t = t_dtype::DTYPE_BOOL;
     } else if (py::isinstance<py::int_>(x)) {
         double x_float64 = x.cast<double>();
         if ((std::fmod(x_float64, 1.0) == 0.0) && (x_float64 < 10000.0)
