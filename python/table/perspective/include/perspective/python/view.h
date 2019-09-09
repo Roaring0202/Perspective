@@ -26,7 +26,7 @@ bool is_valid_filter(t_dtype type, t_val date_parser, t_filter_op comp, t_val fi
 
 template <>
 std::tuple<std::string, std::string, std::vector<t_tscalar>>
-make_filter_term(t_dtype column_type, t_val date_parser, const std::string column_name, const std::string& filter_op_str, t_val filter_term);
+make_filter_term(t_dtype column_type, t_val date_parser, const std::string& column_name, const std::string& filter_op_str, t_val filter_term);
 
 template <>
 t_view_config make_view_config(const t_schema& schema, t_val date_parser, t_val config);
