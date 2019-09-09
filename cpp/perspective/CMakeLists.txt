@@ -391,7 +391,7 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		########################
 		# Python extra targets #
 		########################
-		add_library(psp SHARED ${SOURCE_FILES} ${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/numpy.cpp ${HEADER_FILES})
+		add_library(psp SHARED ${SOURCE_FILES} ${HEADER_FILES})
 
 		target_compile_definitions(psp PRIVATE PSP_ENABLE_PYTHON=1)
 		target_link_libraries(psp ${PYTHON_LIBRARIES})

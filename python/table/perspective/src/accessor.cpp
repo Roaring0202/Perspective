@@ -66,7 +66,7 @@ get_column_names(t_val data, std::int32_t format) {
 
 t_dtype
 infer_type(t_val x, t_val date_validator) {
-    std::string jstype = py::str(x.get_type());
+    std::string type_string = x.get_type().attr("__name__").cast<std::string>();
     t_dtype t = t_dtype::DTYPE_STR;
 
     if (x.is_none()) {
@@ -79,17 +79,7 @@ infer_type(t_val x, t_val date_validator) {
         } else {
             t = t_dtype::DTYPE_FLOAT64;
         }
-    } else if (py::isinstance<py::float_>(x)) {
-        t = t_dtype::DTYPE_FLOAT64;
-    } else if (py::isinstance<py::bool_>(x) || jstype == "bool") {
-        t = t_dtype::DTYPE_BOOL;
-    } else if (jstype == "datetime.datetime") {
-        // TODO allow derived types
-        t = t_dtype::DTYPE_TIME;
-    } else if (jstype == "datetime.date") {
-        // TODO allow derived types
-        t = t_dtype::DTYPE_DATE;
-    } else if (py::isinstance<py::str>(x) || jstype == "string") {
+    } else if (py::isinstance<py::str>(x) || type_string == "str") {
         if (date_validator.attr("check")(x).cast<bool>()) {
             t = t_dtype::DTYPE_TIME;
         } else {
@@ -100,6 +90,8 @@ infer_type(t_val x, t_val date_validator) {
                 t = t_dtype::DTYPE_STR;
             }
         }
+    } else {
+        t = type_string_to_t_dtype(type_string);
     }
     return t;
 }
@@ -165,66 +157,7 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
                 WARN("Warning: __INDEX__ column should not be in the Table schema.");
                 continue;
             }
-
-            // TODO consider refactor
-            if (value == "int") {
-                // Python int
-                type = t_dtype::DTYPE_INT64;
-            } else if (value == "int8") {
-                // Numpy int8
-                type = t_dtype::DTYPE_INT8;
-            } else if (value == "int16") {
-                // Numpy int16
-                type = t_dtype::DTYPE_INT16;
-            } else if (value == "int32") {
-                // Numpy int32
-                type = t_dtype::DTYPE_INT32;
-            } else if (value == "int64") {
-                // Numpy int64
-                type = t_dtype::DTYPE_INT64;
-            } else if (value == "float") {
-                // Python float
-                type = t_dtype::DTYPE_FLOAT64;
-            } else if (value == "float16") {
-                // TODO
-                // Numpy float16
-                // type = t_dtype::DTYPE_FLOAT16;
-            } else if (value == "float32") {
-                // Numpy float32
-                type = t_dtype::DTYPE_FLOAT32;
-            } else if (value == "float64") {
-                // Numpy float64
-                type = t_dtype::DTYPE_FLOAT64;
-            } else if (value == "float128") {
-                // TODO
-                // Numpy float128
-                // type = t_dtype::DTYPE_FLOAT128;
-            } else if (value == "str") {
-                // Python unicode str
-                type = t_dtype::DTYPE_STR;
-            } else if (value == "bool") {
-                // Python bool
-                type = t_dtype::DTYPE_BOOL;
-            } else if (value == "bool8") {
-                // Numpy bool8
-                type = t_dtype::DTYPE_BOOL;
-            } else if (value == "datetime") {
-                // Python datetime
-                // TODO inheritance
-                type = t_dtype::DTYPE_TIME;
-            } else if (value == "datetime64") {
-                // Numpy datetime64
-                type = t_dtype::DTYPE_TIME;
-            } else if (value == "Timestamp") {
-                // Pandas timestamp
-                type = t_dtype::DTYPE_TIME;
-            } else if (value == "date") {
-                // Python date
-                // TODO inheritance
-                type = t_dtype::DTYPE_DATE;
-            } else {
-                CRITICAL("Unknown type '%s' for key '%s'", value, name);
-            }
+            type = type_string_to_t_dtype(value, name);
             types.push_back(type);
         }
 
