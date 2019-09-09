@@ -26,6 +26,7 @@ def _type_to_format(data_or_schema):
 
 class _PerspectiveAccessor(object):
     '''Internal class to manage perspective table state'''
+
     def __init__(self, data_or_schema):
         self._data_or_schema = data_or_schema
         self._format = _type_to_format(data_or_schema)

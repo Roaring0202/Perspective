@@ -44,6 +44,8 @@ PYBIND11_MAKE_OPAQUE(string_map);
 
 namespace perspective {
 namespace binding {
+    t_val scalar_to_py(const t_tscalar& scalar, bool cast_double = false, bool cast_string = false);
+
     std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_val computed,
         std::uint32_t limit, py::str index, t_op op, bool is_update, bool is_arrow);
 
@@ -220,18 +222,18 @@ PYBIND11_MODULE(libbinding, m)
      *
      * t_data_slice
      */
-    py::class_<t_data_slice<t_ctx0>>(m, "t_data_slice_ctx0")
+    py::class_<t_data_slice<t_ctx0>, std::shared_ptr<t_data_slice<t_ctx0>>>(m, "t_data_slice_ctx0")
         .def("get_column_slice", &t_data_slice<t_ctx0>::get_column_slice)
         .def("get_slice", &t_data_slice<t_ctx0>::get_slice)
         .def("get_column_names", &t_data_slice<t_ctx0>::get_column_names);
 
-    py::class_<t_data_slice<t_ctx1>>(m, "t_data_slice_ctx1")
+    py::class_<t_data_slice<t_ctx1>, std::shared_ptr<t_data_slice<t_ctx1>>>(m, "t_data_slice_ctx1")
         .def("get_column_slice", &t_data_slice<t_ctx1>::get_column_slice)
         .def("get_slice", &t_data_slice<t_ctx1>::get_slice)
         .def("get_column_names", &t_data_slice<t_ctx1>::get_column_names)
         .def("get_row_path", &t_data_slice<t_ctx1>::get_row_path);
 
-    py::class_<t_data_slice<t_ctx2>>(m, "t_data_slice_ctx2")
+    py::class_<t_data_slice<t_ctx2>, std::shared_ptr<t_data_slice<t_ctx2>>>(m, "t_data_slice_ctx2")
         .def("get_column_slice", &t_data_slice<t_ctx2>::get_column_slice)
         .def("get_slice", &t_data_slice<t_ctx2>::get_slice)
         .def("get_column_names", &t_data_slice<t_ctx2>::get_column_names)
@@ -272,7 +274,8 @@ PYBIND11_MODULE(libbinding, m)
      * t_tscalar
      */
     py::class_<t_tscalar>(m, "t_tscalar")
-        .def(py::init<>());
+        .def(py::init<>())
+        .def("to_string", &t_tscalar::to_string);
 
     /******************************************************************************
      *

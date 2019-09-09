@@ -35,6 +35,72 @@ pythondate_to_t_date(t_val date) {
         date.attr("day").cast<std::int32_t>());
 }
 
+t_val
+scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
+    if (!scalar.is_valid()) {
+        return py::none();
+    }
+    
+    switch (scalar.get_dtype()) {
+        case DTYPE_BOOL: {
+            if (scalar) {
+                return py::cast(true);
+            } else {
+                return py::cast(false);
+            }
+        }
+        case DTYPE_TIME: {
+            if (cast_double) {
+                auto x = scalar.to_uint64();
+                double y = *reinterpret_cast<double*>(&x);
+                return py::cast(y);
+            } else if (cast_string) {
+                double ms = scalar.to_double();
+                return py::cast(ms);
+                //t_val date = t_val::global("Date").new_(ms);
+                //return date.call<t_val>("toLocaleString");
+            } else {
+                // TODO: should return python datetime
+                return py::cast(scalar.to_double());
+            }
+        }
+        case DTYPE_FLOAT64:
+        case DTYPE_FLOAT32: {
+            if (cast_double) {
+                auto x = scalar.to_uint64();
+                double y = *reinterpret_cast<double*>(&x);
+                return py::cast(y);
+            } else {
+                return py::cast(scalar.to_double());
+            }
+        }
+        case DTYPE_DATE: {
+            CRITICAL("date return is not implemented"); // TODO: implement python datetime return
+        }
+        case DTYPE_UINT8:
+        case DTYPE_UINT16:
+        case DTYPE_UINT32:
+        case DTYPE_INT8:
+        case DTYPE_INT16:
+        case DTYPE_INT32: {
+            return py::cast(scalar.to_int64());
+        }
+        case DTYPE_UINT64:
+        case DTYPE_INT64: {
+            // This could potentially lose precision
+            return py::cast(scalar.to_int64());
+        }
+        case DTYPE_NONE: {
+            return py::none();
+        }
+        case DTYPE_STR:
+        default: {
+            std::wstring_convert<utf8convert_type, wchar_t> converter("", L"<Invalid>");
+            return py::cast(scalar.to_string());
+        }
+    }
+}
+
 /******************************************************************************
  *
  * Data accessor API
@@ -84,11 +150,13 @@ get_column_names(t_val data, std::int32_t format) {
 
 t_dtype
 infer_type(t_val x, t_val date_validator) {
-    std::string jstype = py::str(x.get_type());
+    std::string pytype = py::str(x.get_type());
     t_dtype t = t_dtype::DTYPE_STR;
 
     if (x.is_none()) {
         t = t_dtype::DTYPE_NONE;
+    } else if (py::isinstance<py::bool_>(x) || pytype == "bool") { 
+        t = t_dtype::DTYPE_BOOL;
     } else if (py::isinstance<py::int_>(x)) {
         double x_float64 = x.cast<double>();
         if ((std::fmod(x_float64, 1.0) == 0.0) && (x_float64 < 10000.0)
@@ -99,15 +167,13 @@ infer_type(t_val x, t_val date_validator) {
         }
     } else if (py::isinstance<py::float_>(x)) {
         t = t_dtype::DTYPE_FLOAT64;
-    } else if (py::isinstance<py::bool_>(x) || jstype == "bool") {
-        t = t_dtype::DTYPE_BOOL;
-    } else if (jstype == "datetime.datetime") {
+    } else if (pytype == "datetime.datetime") {
         // TODO allow derived types
         t = t_dtype::DTYPE_TIME;
-    } else if (jstype == "datetime.date") {
+    } else if (pytype == "datetime.date") {
         // TODO allow derived types
         t = t_dtype::DTYPE_DATE;
-    } else if (py::isinstance<py::str>(x) || jstype == "string") {
+    } else if (py::isinstance<py::str>(x) || pytype == "string") {
         if (date_validator.attr("check")(x).cast<bool>()) {
             t = t_dtype::DTYPE_TIME;
         } else {
@@ -1307,8 +1373,8 @@ template <typename CTX_T>
 t_val
 get_from_data_slice(
     std::shared_ptr<t_data_slice<CTX_T>> data_slice, t_uindex ridx, t_uindex cidx) {
-    auto d = data_slice->get(ridx, cidx);
-    return py::cast(d);
+    t_tscalar d = data_slice->get(ridx, cidx);
+    return scalar_to_py(d);
 }
 
 t_val

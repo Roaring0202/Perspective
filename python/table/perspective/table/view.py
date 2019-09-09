@@ -6,15 +6,16 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 from random import random
-from perspective.table.libbinding import make_view_zero, make_view_one, make_view_two
+from perspective.table.libbinding import make_view_zero, make_view_one, make_view_two, \
+    get_data_slice_zero, get_data_slice_one, get_data_slice_two, \
+    get_from_data_slice_zero, get_from_data_slice_one, get_from_data_slice_two
 from .view_config import ViewConfig
-
-DEFAULT_SEPARATOR_STRING = "|"  # TODO: move to a constants.py
+from ._constants import COLUMN_SEPARATOR_STRING
 
 
 class View(object):
     def __init__(self, Table, config=None):
-        """Private constructor for a View object - use the Table.view() method to create Views.
+        '''Private constructor for a View object - use the Table.view() method to create Views.
 
         A View object represents a specific transform (configuration or pivot,
         filter, sort, etc) configuration on an underlying Table. A View
@@ -23,21 +24,21 @@ class View(object):
 
         View objects are immutable, and will remain in memory and actively process
         updates until its delete() method is called.
-        """
+        '''
         self._table = Table
         self._config = ViewConfig(config or {})
         self._sides = self.sides()
 
         if self._sides == 0:
             # FIXME: weird date validator passing
-            self._view = make_view_zero(self._table._table, str(random()), DEFAULT_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_zero(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
         elif self._sides == 1:
-            self._view = make_view_one(self._table._table, str(random()), DEFAULT_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_one(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
         else:
-            self._view = make_view_two(self._table._table, str(random()), DEFAULT_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_two(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
 
     def sides(self):
-        """How many pivoted sides does this View have?"""
+        '''How many pivoted sides does this View have?'''
         if len(self._config.get_row_pivots()) > 0 or len(self._config.get_column_pivots()) > 0:
             if len(self._config.get_column_pivots()) > 0:
                 return 2
@@ -47,19 +48,79 @@ class View(object):
             return 0
 
     def num_rows(self):
-        """The number of aggregated rows in the View. This is affected by the `row-pivots` that are applied to the View.
+        '''The number of aggregated rows in the View. This is affected by the `row-pivots` that are applied to the View.
 
         Returns:
             int : number of rows
-        """
+        '''
         return self._view.num_rows()
 
     def num_columns(self):
-        """The number of aggregated columns in the View. This is affected by the `column-pivots` that are applied to the View.
+        '''The number of aggregated columns in the View. This is affected by the `column-pivots` that are applied to the View.
+
         Returns:
             int : number of columns
-        """
+        '''
         return self._view.num_columns()
 
     def schema(self):
-        return self._view.schema()
+        '''The schema of this view, which is a key-value map that contains the column names and their data types.
+
+        If the columns are aggregated, their aggregated types will be shown.
+
+        Returns:
+            schema : a map of strings to strings
+        '''
+        s = self._view.schema()
+        schema = {}
+        for item in s.items():
+            schema[item[0]] = item[1]
+        return schema
+
+    # TODO: genericize in a better format than the `to_format` in JS
+    def to_dict(self, options={}):
+        opts = self._parse_format_options(options)
+
+        if self._sides == 0:
+            data_slice = get_data_slice_zero(self._view, opts["start_row"], opts["end_row"], opts["start_col"], opts["end_col"])
+        elif self._sides == 1:
+            data_slice = get_data_slice_one(self._view, opts["start_row"], opts["end_row"], opts["start_col"], opts["end_col"])
+        else:
+            data_slice = get_data_slice_two(self._view, opts["start_row"], opts["end_row"], opts["start_col"], opts["end_col"])
+
+        column_names = data_slice.get_column_names()
+        data = []
+        for ridx in range(opts["start_row"], opts["end_row"]):
+            data.append({})
+            for cidx in range(opts["start_col"], opts["end_col"]):
+                name = COLUMN_SEPARATOR_STRING.join([n.to_string(False) for n in column_names[cidx]])
+                # TODO: add column names, pivot support
+                if self._sides == 0:
+                    value = get_from_data_slice_zero(data_slice, ridx, cidx)
+                elif self._sides == 1:
+                    value = get_from_data_slice_one(data_slice, ridx, cidx)
+                else:
+                    value = get_from_data_slice_two(data_slice, ridx, cidx)
+                data[ridx][name] = value
+
+        return data
+
+    def _num_hidden_cols(self):
+        '''Returns the number of columns that are sorted but not shown.'''
+        hidden = 0
+        columns = self._config.get_columns()
+        for sort in self._config.get_sort():
+            if sort[0] not in columns:
+                hidden += 1
+        return hidden
+
+    def _parse_format_options(self, options):
+        '''Given a user-provided options dictionary, extract the useful values.'''
+        return {
+            "start_row": options.get("start_row", 0),
+            "end_row": options.get("end_row", self.num_rows()),
+            "start_col": options.get("start_col", 0),
+            "end_col": options.get("end_col", self.num_columns() + 0 if self._sides == 0 else 1),
+            "index": options.get("index", False),
+            "leaves_only": options.get("leaves_only", False)
+        }
