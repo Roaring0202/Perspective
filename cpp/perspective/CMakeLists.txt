@@ -355,6 +355,16 @@ set (SOURCE_FILES
 	src/cpp/vocab.cpp
 	)
 
+set (PYTHON_SOURCE_FILES
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/accessor.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/context.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/fill.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/python.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/table.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/utils.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/view.cpp
+	)
+
 if (WIN32)
 	set(CMAKE_CXX_FLAGS " /EHsc")
 else()
@@ -387,7 +397,7 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		target_link_libraries(psp ${PYTHON_LIBRARIES})
 		set(CMAKE_SHARED_LIBRARY_SUFFIX .so)
 
-		add_library(binding SHARED ${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/python.cpp)
+		add_library(binding SHARED ${PYTHON_SOURCE_FILES})
 
 		target_compile_definitions(binding PRIVATE PSP_ENABLE_PYTHON=1)
 		target_compile_options(binding PRIVATE -Wdeprecated-declarations)

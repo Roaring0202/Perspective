@@ -10,10 +10,22 @@
 
 #include <perspective/base.h>
 #include <perspective/binding.h>
-#include <perspective/python.h>
+#include <perspective/python/base.h>
+#include <perspective/python/utils.h>
 
 namespace perspective {
 namespace binding {
+
+/******************************************************************************
+ *
+ * Date Parsing
+ */
+t_date
+pythondate_to_t_date(t_val date) {
+    return t_date(date.attr("year").cast<std::int32_t>(),
+        date.attr("month").cast<std::int32_t>(),
+        date.attr("day").cast<std::int32_t>());
+}
 
 } //namespace binding
 } //namespace perspective
