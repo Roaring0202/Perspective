@@ -94,13 +94,11 @@ make_view_config(const t_schema& schema, t_val date_parser, t_val config) {
     auto row_pivots = config.attr("get_row_pivots")().cast<std::vector<std::string>>();
     auto column_pivots = config.attr("get_column_pivots")().cast<std::vector<std::string>>();
     auto columns = config.attr("get_columns")().cast<std::vector<std::string>>();
-    // auto sort = config.attr("get_sort")().cast<std::vector<std::vector<std::string>>>();
-    std::vector<std::vector<std::string>> sort;
+    auto sort = config.attr("get_sort")().cast<std::vector<std::vector<std::string>>>();
     auto filter_op = config.attr("get_filter_op")().cast<std::string>();
 
     // aggregates require manual parsing - std::maps read from JS are empty
-    // auto p_aggregates= config.attr("get_aggregates")().cast<std::vector<std::vector<std::string>>>();
-    std::vector<std::vector<std::string>> p_aggregates;
+    auto p_aggregates= config.attr("get_aggregates")().cast<std::vector<std::vector<std::string>>>();
     tsl::ordered_map<std::string, std::string> aggregates;
 
     for (const auto& vec : p_aggregates) {
@@ -116,8 +114,7 @@ make_view_config(const t_schema& schema, t_val date_parser, t_val config) {
     }
 
     // construct filters with filter terms, and fill the vector of tuples
-    // auto p_filter = config.attr("get_filter")().cast<std::vector<std::vector<t_val>>>();
-    std::vector<std::vector<t_val>> p_filter;
+    auto p_filter = config.attr("get_filter")().cast<std::vector<std::vector<t_val>>>();
     std::vector<std::tuple<std::string, std::string, std::vector<t_tscalar>>> filter;
 
     for (auto f : p_filter) {

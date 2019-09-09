@@ -145,10 +145,6 @@ _fill_col_bool(t_data_accessor accessor, std::shared_ptr<t_column> col, std::str
         for (auto i = 0; i < nrows; ++i) {
             t_val item = accessor.attr("marshal")(cidx, i, type);
 
-            // TODO
-            // if (item.isUndefined())
-            //     continue;
-
             if (item.is_none()) {
                 if (is_update) {
                     col->unset(i);
