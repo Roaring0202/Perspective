@@ -100,6 +100,71 @@ t_dtype type_string_to_t_dtype(py::str type, py::str name){
     return type_string_to_t_dtype(type.cast<std::string>(), name.cast<std::string>());
 }
 
+t_val
+scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
+    if (!scalar.is_valid()) {
+        return py::none();
+    }
+    
+    switch (scalar.get_dtype()) {
+        case DTYPE_BOOL: {
+            if (scalar) {
+                return py::cast(true);
+            } else {
+                return py::cast(false);
+            }
+        }
+        case DTYPE_TIME: {
+            if (cast_double) {
+                auto x = scalar.to_uint64();
+                double y = *reinterpret_cast<double*>(&x);
+                return py::cast(y);
+            } else if (cast_string) {
+                double ms = scalar.to_double();
+                return py::cast(ms);
+                //t_val date = t_val::global("Date").new_(ms);
+                //return date.call<t_val>("toLocaleString");
+            } else {
+                // TODO: should return python datetime
+                return py::cast(scalar.to_double());
+            }
+        }
+        case DTYPE_FLOAT64:
+        case DTYPE_FLOAT32: {
+            if (cast_double) {
+                auto x = scalar.to_uint64();
+                double y = *reinterpret_cast<double*>(&x);
+                return py::cast(y);
+            } else {
+                return py::cast(scalar.to_double());
+            }
+        }
+        case DTYPE_DATE: {
+            CRITICAL("date return is not implemented"); // TODO: implement python datetime return
+        }
+        case DTYPE_UINT8:
+        case DTYPE_UINT16:
+        case DTYPE_UINT32:
+        case DTYPE_INT8:
+        case DTYPE_INT16:
+        case DTYPE_INT32: {
+            return py::cast(scalar.to_int64());
+        }
+        case DTYPE_UINT64:
+        case DTYPE_INT64: {
+            // This could potentially lose precision
+            return py::cast(scalar.to_int64());
+        }
+        case DTYPE_NONE: {
+            return py::none();
+        }
+        case DTYPE_STR:
+        default: {
+            std::wstring_convert<utf8convert_type, wchar_t> converter("", L"<Invalid>");
+            return py::cast(scalar.to_string());
+        }
+    }
+}
 
 } //namespace binding
 } //namespace perspective

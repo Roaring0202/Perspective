@@ -39,6 +39,7 @@ t_date pythondate_to_t_date(t_val date);
 t_dtype type_string_to_t_dtype(std::string type, std::string name = "");
 t_dtype type_string_to_t_dtype(py::str type, py::str name = "");
 
+t_val scalar_to_py(const t_tscalar& scalar, bool cast_double = false, bool cast_string = false);
 
 } //namespace binding
 } //namespace perspective

@@ -360,6 +360,7 @@ set (PYTHON_SOURCE_FILES
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/context.cpp
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/fill.cpp
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/python.cpp
+	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/serialization.cpp
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/table.cpp
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/utils.cpp
 	${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/view.cpp

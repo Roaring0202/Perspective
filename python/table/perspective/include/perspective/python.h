@@ -33,6 +33,7 @@
 #include <perspective/python/base.h>
 #include <perspective/python/context.h>
 #include <perspective/python/fill.h>
+#include <perspective/python/serialization.h>
 #include <perspective/python/table.h>
 #include <perspective/python/utils.h>
 #include <perspective/python/view.h>
@@ -40,7 +41,6 @@
 
 namespace perspective {
 namespace binding {
-    t_val scalar_to_py(const t_tscalar& scalar, bool cast_double = false, bool cast_string = false);
 }
 }
 
