@@ -63,6 +63,16 @@ class TestTable(object):
             "b": "string"
         }
 
+    def test_table_date(self):
+        str_data = [{"a": date.today(), "b": date.today()}]
+        tbl = Table(str_data)
+        assert tbl.size() == 1
+
+    def test_table_datetime(self):
+        str_data = [{"a": datetime.now(), "b": datetime.now()}]
+        tbl = Table(str_data)
+        assert tbl.size() == 1
+
     def test_table_columns(self):
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)

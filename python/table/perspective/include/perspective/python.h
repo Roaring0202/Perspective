@@ -6,79 +6,41 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-
 #pragma once
 #ifdef PSP_ENABLE_PYTHON
-#include <perspective/first.h>
-#include <perspective/raw_types.h>
-#include <perspective/base.h>
-#include <perspective/binding.h>
-#include <perspective/exports.h>
+
+/******************************************************************************
+ *
+ * Pybind includes
+ */
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
 #include <boost/optional.hpp>
 
-using namespace perspective;
-namespace py = pybind11;
 
-typedef py::object t_val;
-typedef t_val t_data_accessor;
+/******************************************************************************
+ *
+ * Perspective includes
+ */
+#include <perspective/first.h>
+#include <perspective/raw_types.h>
+#include <perspective/base.h>
+#include <perspective/binding.h>
+#include <perspective/exports.h>
+#include <perspective/python/accessor.h>
+#include <perspective/python/base.h>
+#include <perspective/python/context.h>
+#include <perspective/python/fill.h>
+#include <perspective/python/table.h>
+#include <perspective/python/utils.h>
+#include <perspective/python/view.h>
 
-
-PYBIND11_MAKE_OPAQUE(std::vector<std::int32_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<std::string>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_dtype>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_cellupd>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_tscalar>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_updctx>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_uindex>);
-PYBIND11_MAKE_OPAQUE(std::vector<t_val>);
-PYBIND11_MAKE_OPAQUE(std::vector<std::vector<t_tscalar> >);
-PYBIND11_MAKE_OPAQUE(std::vector<std::vector<std::string> >);
-PYBIND11_MAKE_OPAQUE(std::vector<std::vector<t_val> >);
-
-using string_map = std::map< std::string, std::string >;
-PYBIND11_MAKE_OPAQUE(string_map);
 
 namespace perspective {
 namespace binding {
     t_val scalar_to_py(const t_tscalar& scalar, bool cast_double = false, bool cast_string = false);
-
-    std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_val computed,
-        std::uint32_t limit, py::str index, t_op op, bool is_update, bool is_arrow);
-
-    std::shared_ptr<Table> make_computed_table_py(std::shared_ptr<Table> table, t_val computed);
-
-    std::shared_ptr<View<t_ctx0>> make_view_ctx0(std::shared_ptr<Table> table, const std::string& name,
-        const std::string& separator, t_val view_config, t_val date_parser);
-
-    std::shared_ptr<View<t_ctx1>> make_view_ctx1(std::shared_ptr<Table> table, const std::string& name,
-        const std::string& separator, t_val view_config, t_val date_parser);
-
-    std::shared_ptr<View<t_ctx2>> make_view_ctx2(std::shared_ptr<Table> table, const std::string& name,
-        const std::string& separator, t_val view_config, t_val date_parser);
-
-
-    // TODO: implement
-    std::shared_ptr<t_data_slice<t_ctx0>> get_data_slice_ctx0(std::shared_ptr<View<t_ctx0>> view,
-        std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
-        std::uint32_t end_col);
-
-    t_val get_from_data_slice_ctx0(std::shared_ptr<t_data_slice<t_ctx0>> data_slice, t_uindex ridx, t_uindex cidx);
-
-    std::shared_ptr<t_data_slice<t_ctx1>> get_data_slice_ctx1(std::shared_ptr<View<t_ctx1>> view,
-        std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
-        std::uint32_t end_col);
-
-    t_val get_from_data_slice_ctx1(std::shared_ptr<t_data_slice<t_ctx1>> data_slice, t_uindex ridx, t_uindex cidx);
-
-    std::shared_ptr<t_data_slice<t_ctx2>> get_data_slice_ctx2(std::shared_ptr<View<t_ctx2>> view,
-        std::uint32_t start_row, std::uint32_t end_row, std::uint32_t start_col,
-        std::uint32_t end_col);
-        
-    t_val get_from_data_slice_ctx2(std::shared_ptr<t_data_slice<t_ctx2>> data_slice, t_uindex ridx, t_uindex cidx);
 }
 }
 
@@ -306,28 +268,6 @@ PYBIND11_MODULE(libbinding, m)
         .def_readwrite("rows_changed", &t_stepdelta::rows_changed)
         .def_readwrite("columns_changed", &t_stepdelta::columns_changed)
         .def_readwrite("cells", &t_stepdelta::cells);
-
-    /******************************************************************************
-     *
-     * vector
-     */
-    py::bind_vector<std::vector<std::int32_t>>(m, "int32_vector");
-    py::bind_vector<std::vector<std::string>>(m, "string_vector");
-    py::bind_vector<std::vector<t_dtype>>(m, "t_dtype_vector");
-    py::bind_vector<std::vector<t_cellupd>>(m, "t_cellupd_vector");
-    py::bind_vector<std::vector<t_tscalar>>(m, "t_tscalar_vector");
-    py::bind_vector<std::vector<t_updctx>>(m, "t_updctx_vector");
-    py::bind_vector<std::vector<t_uindex>>(m, "t_uindex_vector");
-    py::bind_vector<std::vector<t_val>>(m, "t_val_vector");
-    py::bind_vector<std::vector<std::vector<t_tscalar>>>(m, "t_tscalar_vector_vector");
-    py::bind_vector<std::vector<std::vector<std::string>>>(m, "string_vector_vector");
-    py::bind_vector<std::vector<std::vector<t_val>>>(m, "t_val_vector_vector");
-
-    /******************************************************************************
-     *
-     * map
-     */
-    py::bind_map<string_map>(m, "string_string_map");
 
     /******************************************************************************
      *

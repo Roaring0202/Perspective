@@ -10,15 +10,15 @@ import os
 import os.path
 import numpy as np
 import pandas as pd
-from perspective.table.libbinding import Table, t_pool, t_op, t_dtype, string_vector, t_dtype_vector
+from perspective.table.libbinding import Table, t_pool, t_op, t_dtype
 
 
 class TestTable(object):
     def test_table(self):
         pool = t_pool()
         t = Table(pool,
-                  string_vector(['test']),
-                  t_dtype_vector([t_dtype.DTYPE_INT32]),
+                  ['test'],
+                  [t_dtype.DTYPE_INT32],
                   0,
                   ''
                   )
