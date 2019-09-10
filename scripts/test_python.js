@@ -14,6 +14,7 @@ const execute = cmd => execSync(cmd, {stdio: "inherit"});
 
 const VALID_TARGETS = ["node", "table"];
 const HAS_TARGET = args.indexOf("--target") != -1;
+const VERBOSE = args.indexOf("--verbose") != -1;
 
 function docker(target = "perspective", image = "emsdk") {
     console.log(`-- Creating ${image} docker image`);
@@ -39,11 +40,11 @@ try {
     let cmd;
 
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/${target} && python3 -m pytest -v perspective --cov=perspective`;
+        cmd = `cd python/${target} && python3 -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
         execute(`${docker(target, "python")} bash -c "${cmd}"`);
     } else {
         const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && python3 -m pytest -v perspective --cov=perspective`;
+        cmd = `cd ${python_path} && python3 -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
         execute(cmd);
     }
 } catch (e) {

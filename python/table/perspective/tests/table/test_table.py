@@ -122,3 +122,9 @@ class TestTable(object):
         data = {"a": [None, None, None, None, True, True, True]}
         tbl = Table(data)
         assert tbl.schema() == {"a": "boolean"}
+
+    def test_table_infer_str(self):
+        data = {"a": [None, None, None, None, None, None, "abc"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "string"}
+
