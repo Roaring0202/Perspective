@@ -128,3 +128,20 @@ class TestTable(object):
         tbl = Table(data)
         assert tbl.schema() == {"a": "string"}
 
+    # index
+    def test_table_index(self):
+        data = [{"a": 1, "b": 2}, {"a": 1, "b": 4}]
+        tbl = Table(data, {"index": "a"})
+        assert tbl.size() == 1
+        assert tbl.view().to_dict() == [
+            {"a": 1, "b": 4}
+        ]
+
+    # limit
+    def test_table_limit(self):
+        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
+        tbl = Table(data, {"limit": 1})
+        assert tbl.size() == 1
+        assert tbl.view().to_dict() == [
+            {"a": 3, "b": 4}
+        ]

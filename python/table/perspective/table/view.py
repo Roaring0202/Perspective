@@ -7,9 +7,9 @@
 #
 from random import random
 from perspective.table.libbinding import make_view_zero, make_view_one, make_view_two, \
-    get_data_slice_zero, get_data_slice_one, get_data_slice_two, \
-    get_from_data_slice_zero, get_from_data_slice_one, get_from_data_slice_two
+    get_data_slice_zero, get_data_slice_one, get_data_slice_two
 from .view_config import ViewConfig
+from ._data_formatter import _PerspectiveDataFormatter
 from ._constants import COLUMN_SEPARATOR_STRING
 
 
@@ -79,7 +79,6 @@ class View(object):
             schema[item[0]] = item[1]
         return schema
 
-    # TODO: genericize in a better format than the `to_format` in JS
     def to_dict(self, options=None):
         '''Serialize the view's dataset into a `list` of `dict`s containing each individual row.
 
@@ -96,84 +95,40 @@ class View(object):
                 - leaves_only: whether to return only the data at the end of the tree. Defaults to False
 
         Returns:
-            data : dict
-                The serialized form of the view's data
+            list : A list of dictionaries, where each dict represents a new row of the dataset
         '''
-        opts, num_view_columns, column_names, data_slice = self._to_format_helper(options)
-        data = []
-
-        for ridx in range(opts["start_row"], opts["end_row"]):
-            data.append({})
-
-            row_path = data_slice.get_row_path(ridx) if opts["has_row_path"] and not opts["leaves_only"] else None
-            if (row_path and self._config.get_row_pivots()) and (len(row_path) < len(self._config.get_row_pivots())):
-                continue
-
-            for cidx in range(opts["start_col"], opts["end_col"]):
-                name = COLUMN_SEPARATOR_STRING.join([n.to_string(False) for n in column_names[cidx]])
-
-                if (cidx - (1 if self._sides > 0 else 0)) % (num_view_columns + self._num_hidden_cols()) >= num_view_columns:
-                    # don't emit columns used for hidden sort
-                    continue
-                elif cidx == opts["start_col"] and self._sides > 0:
-                    if not self._column_only:
-                        data[ridx]["__ROW_PATH__"] = [path.to_string(False) for path in row_path]
-                else:
-                    if self._sides == 0:
-                        value = get_from_data_slice_zero(data_slice, ridx, cidx)
-                    elif self._sides == 1:
-                        value = get_from_data_slice_one(data_slice, ridx, cidx)
-                    else:
-                        value = get_from_data_slice_two(data_slice, ridx, cidx)
-                    data[ridx][name] = value
-
-        return data
+        opts, column_names, data_slice = self._to_format_helper(options)
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, [])
 
     def to_columns(self, options=None):
-        opts, num_view_columns, column_names, data_slice = self._to_format_helper(options)
-        data = {}
-        print (self._column_only)
+        '''Serialize the view's dataset into a `dict` of `str` keys and `list` values.
+        Each key is a column name, and the associated value is the column's data packed into a list.
 
-        for ridx in range(opts["start_row"], opts["end_row"]):
-            row_path = data_slice.get_row_path(ridx) if opts["has_row_path"] and not opts["leaves_only"] else None
-            if (row_path and self._config.get_row_pivots()) and (len(row_path) < len(self._config.get_row_pivots())):
-                continue
+        If the view is aggregated, the aggregated dataset will be returned.
 
-            for cidx in range(opts["start_col"], opts["end_col"]):
-                name = COLUMN_SEPARATOR_STRING.join([n.to_string(False) for n in column_names[cidx]])
+        Params:
+            options : dict
+                user-provided options that specifies what data to return:
+                - start_row: defaults to 0
+                - end_row: defaults to the number of total rows in the view
+                - start_col: defaults to 0
+                - end_col: defaults to the total columns in the view
+                - index: whether to return an implicit pkey for each row. Defaults to False
+                - leaves_only: whether to return only the data at the end of the tree. Defaults to False
 
-                if name not in data:
-                    data[name] = []
-
-                if (cidx - (1 if self._sides > 0 else 0)) % (num_view_columns + self._num_hidden_cols()) >= num_view_columns:
-                    # don't emit columns used for hidden sort
-                    continue
-                elif cidx == opts["start_col"] and self._sides > 0:
-                    if not self._column_only:
-                        data["__ROW_PATH__"].append([path.to_string(False) for path in row_path])
-                else:
-                    if self._sides == 0:
-                        value = get_from_data_slice_zero(data_slice, ridx, cidx)
-                    elif self._sides == 1:
-                        value = get_from_data_slice_one(data_slice, ridx, cidx)
-                    else:
-                        value = get_from_data_slice_two(data_slice, ridx, cidx)
-                    data[name].append(value)
-
-        if not opts["has_row_path"] and ("__ROW_PATH__" in data):
-            del data["__ROW_PATH__"]
-
-        return data
+        Returns:
+            dict : a dictionary with string keys and list values, where key = column name and value = column values
+        '''
+        opts, column_names, data_slice = self._to_format_helper(options)
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, {})
 
     def to_numpy(self, options=None):
         pass
 
     def to_arrow(self, options=None):
-        options = options or {}
         pass
 
     def to_df(self, options=None):
-        options = options or {}
         pass
 
     def _to_format_helper(self, options=None):
@@ -188,9 +143,8 @@ class View(object):
             data_slice = get_data_slice_two(self._view, opts["start_row"], opts["end_row"], opts["start_col"], opts["end_col"])
 
         column_names = data_slice.get_column_names()
-        num_view_columns = len(self._config.get_columns())
 
-        return [opts, num_view_columns, column_names, data_slice]
+        return [opts, column_names, data_slice]
 
     def _num_hidden_cols(self):
         '''Returns the number of columns that are sorted but not shown.'''
