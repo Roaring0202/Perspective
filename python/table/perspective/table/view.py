@@ -119,7 +119,26 @@ class View(object):
         return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'columns')
 
     def to_numpy(self, options=None):
-        pass
+        '''Serialize the view's dataset into a `dict` of `str` keys and `numpy.array` values.
+        Each key is a column name, and the associated value is the column's data packed into a numpy array.
+
+        If the view is aggregated, the aggregated dataset will be returned.
+
+        Params:
+            options : dict
+                user-provided options that specifies what data to return:
+                - start_row: defaults to 0
+                - end_row: defaults to the number of total rows in the view
+                - start_col: defaults to 0
+                - end_col: defaults to the total columns in the view
+                - index: whether to return an implicit pkey for each row. Defaults to False
+                - leaves_only: whether to return only the data at the end of the tree. Defaults to False
+
+        Returns:
+            dict : a dictionary with string keys and numpy array values, where key = column name and value = column values
+        '''
+        opts, column_names, data_slice = self._to_format_helper(options)
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'numpy')
 
     def to_arrow(self, options=None):
         pass

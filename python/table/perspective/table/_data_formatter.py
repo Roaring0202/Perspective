@@ -1,4 +1,4 @@
-
+import numpy as np
 from perspective.table.libbinding import get_from_data_slice_zero, get_from_data_slice_one, get_from_data_slice_two
 from ._constants import COLUMN_SEPARATOR_STRING
 
@@ -24,7 +24,8 @@ class _PerspectiveDataFormatter(object):
             for cidx in range(options["start_col"], options["end_col"]):
                 name = COLUMN_SEPARATOR_STRING.join([n.to_string(False) for n in column_names[cidx]])
 
-                if output_format == 'columns':
+                if output_format in ('columns', 'numpy'):
+                    # TODO push into C++ for numpy
                     if name not in data:
                         data[name] = []
 
@@ -53,5 +54,10 @@ class _PerspectiveDataFormatter(object):
 
         if output_format in ('columns', 'numpy') and (not options["has_row_path"] and ("__ROW_PATH__" in data)):
             del data["__ROW_PATH__"]
+
+        if output_format == 'numpy':
+            for k, v in data.items():
+                # TODO push into C++
+                data[k] = np.array(v)
 
         return data
