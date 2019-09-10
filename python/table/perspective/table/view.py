@@ -73,11 +73,7 @@ class View(object):
         Returns:
             schema : a map of strings to strings
         '''
-        s = self._view.schema()
-        schema = {}
-        for item in s.items():
-            schema[item[0]] = item[1]
-        return schema
+        return {item[0]: item[1] for item in self._view.schema().items()}
 
     def to_dict(self, options=None):
         '''Serialize the view's dataset into a `list` of `dict`s containing each individual row.
@@ -98,7 +94,7 @@ class View(object):
             list : A list of dictionaries, where each dict represents a new row of the dataset
         '''
         opts, column_names, data_slice = self._to_format_helper(options)
-        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, [])
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'records')
 
     def to_columns(self, options=None):
         '''Serialize the view's dataset into a `dict` of `str` keys and `list` values.
@@ -120,7 +116,7 @@ class View(object):
             dict : a dictionary with string keys and list values, where key = column name and value = column values
         '''
         opts, column_names, data_slice = self._to_format_helper(options)
-        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, {})
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'columns')
 
     def to_numpy(self, options=None):
         pass
