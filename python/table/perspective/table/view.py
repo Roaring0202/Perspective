@@ -75,7 +75,7 @@ class View(object):
         '''
         return {item[0]: item[1] for item in self._view.schema().items()}
 
-    def to_dict(self, options=None):
+    def to_records(self, options=None):
         '''Serialize the view's dataset into a `list` of `dict`s containing each individual row.
 
         If the view is aggregated, the aggregated dataset will be returned.
@@ -96,7 +96,7 @@ class View(object):
         opts, column_names, data_slice = self._to_format_helper(options)
         return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'records')
 
-    def to_columns(self, options=None):
+    def to_dict(self, options=None):
         '''Serialize the view's dataset into a `dict` of `str` keys and `list` values.
         Each key is a column name, and the associated value is the column's data packed into a list.
 
@@ -116,7 +116,7 @@ class View(object):
             dict : a dictionary with string keys and list values, where key = column name and value = column values
         '''
         opts, column_names, data_slice = self._to_format_helper(options)
-        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'columns')
+        return _PerspectiveDataFormatter.to_format(opts, self, column_names, data_slice, 'dict')
 
     def to_numpy(self, options=None):
         '''Serialize the view's dataset into a `dict` of `str` keys and `numpy.array` values.

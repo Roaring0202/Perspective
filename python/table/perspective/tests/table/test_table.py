@@ -99,7 +99,7 @@ class TestTable(object):
             "a": "float",
             "b": "float" 
         }
-        assert tbl.view().to_dict() == [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": None}]
+        assert tbl.view().to_records() == [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": None}]
 
     # schema
 
@@ -253,7 +253,7 @@ class TestTable(object):
         data = [{"a": 1, "b": 2}, {"a": 1, "b": 4}]
         tbl = Table(data, {"index": "a"})
         assert tbl.size() == 1
-        assert tbl.view().to_dict() == [
+        assert tbl.view().to_records() == [
             {"a": 1, "b": 4}
         ]
 
@@ -263,6 +263,6 @@ class TestTable(object):
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data, {"limit": 1})
         assert tbl.size() == 1
-        assert tbl.view().to_dict() == [
+        assert tbl.view().to_records() == [
             {"a": 3, "b": 4}
         ]

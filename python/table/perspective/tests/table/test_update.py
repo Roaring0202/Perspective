@@ -17,7 +17,7 @@ class TestUpdate(object):
             "b": int
         })
         tbl.update([{"a": "abc", "b": 123}])
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 123}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 123}]
 
     def test_update_columnar_from_schema(self):
         tbl = Table({
@@ -25,24 +25,24 @@ class TestUpdate(object):
             "b": int
         })
         tbl.update({"a": ["abc"], "b": [123]})
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 123}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 123}]
 
     def test_update_append(self):
         tbl = Table([{"a": "abc", "b": 123}])
         tbl.update([{"a": "def", "b": 456}])
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 123}, {"a": "def", "b": 456}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 123}, {"a": "def", "b": 456}]
 
     def test_update_partial(self):
         tbl = Table([{"a": "abc", "b": 123}], {"index": "a"})
         tbl.update([{"a": "abc", "b": 456}])
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 456}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 456}]
 
     def test_update_columnar_append(self):
         tbl = Table({"a": ["abc"], "b": [123]})
         tbl.update({"a": ["def"], "b": [456]})
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 123}, {"a": "def", "b": 456}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 123}, {"a": "def", "b": 456}]
 
     def test_update_columnar_partial(self):
         tbl = Table({"a": ["abc"], "b": [123]}, {"index": "a"})
         tbl.update({"a": ["abc"], "b": [456]})
-        assert tbl.view().to_dict() == [{"a": "abc", "b": 456}]
+        assert tbl.view().to_records() == [{"a": "abc", "b": 456}]
