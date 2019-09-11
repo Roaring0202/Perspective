@@ -32,8 +32,8 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
     // Determine metadata
     bool is_delete = op == OP_DELETE;
     if (is_arrow || (is_update || is_delete)) {
-        column_names = accessor.attr("column_names")().cast<std::vector<std::string>>();
-        data_types = accessor.attr("column_types")().cast<std::vector<t_dtype>>();
+        column_names = accessor.attr("names")().cast<std::vector<std::string>>();
+        data_types = accessor.attr("types")().cast<std::vector<t_dtype>>();
     } else {
         // Infer names and types
         t_val data = accessor.attr("data")();

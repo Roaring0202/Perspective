@@ -35,12 +35,23 @@ class _PerspectiveAccessor(object):
             len(data_or_schema) if self._format == 0 else \
             len(max(data_or_schema.values(), key=len)) if self._format == 1 else \
             0
+        if isinstance(data_or_schema, list):
+            self._names = list(data_or_schema[0].keys()) if len(data_or_schema) > 0 else []
+        elif isinstance(data_or_schema, dict):
+            self._names = list(data_or_schema.keys())
+        self._types = []
 
     def data(self):
         return self._data_or_schema
 
     def format(self):
         return self._format
+
+    def names(self):
+        return self._names
+
+    def types(self):
+        return self._types
 
     def date_validator(self):
         return self._date_validator

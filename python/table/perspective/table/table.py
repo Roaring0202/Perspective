@@ -24,6 +24,9 @@ class Table(object):
         self._limit = config.get("limit", 4294967295)
         self._index = config.get("index", "")
         self._table = make_table(None, self._accessor, None, self._limit, self._index, t_op.OP_INSERT, False, False)
+        self._gnode_id = self._table.get_gnode().get_id()
+        self._callbacks = []
+        self._views = []
 
     def load(self, data_or_schema):
         '''Configuration helper for constructing a view
@@ -45,10 +48,8 @@ class Table(object):
         '''Get perspective schema
 
         Returns:
-           schema : dict
-                A key-value mapping of column names to data types.
+           dict : A key-value mapping of column names to data types.
         '''
-        # we should be returning native python data structures - if we ingest python data structures and return weird c++ ones, it doesn't make sense
         s = self._table.get_schema()
         columns = s.columns()
         types = s.types()
@@ -59,10 +60,14 @@ class Table(object):
         return schema
 
     def columns(self, computed=False):
+        '''Returns the column names of this dataset.'''
         return list(self.schema().keys())
 
     def update(self, data):
-        pass
+        schema = self._table.get_schema()
+        self._accessor = _PerspectiveAccessor(data)
+        self._accessor._types = schema.types()[:len(self._accessor.names())]
+        self._table = make_table(self._table, self._accessor, None, self._limit, self._index, t_op.OP_INSERT, True, False)
 
     def remove(self, data):
         pass
@@ -71,4 +76,11 @@ class Table(object):
         config = config or {}
         if len(config.get("columns", [])) == 0:
             config["columns"] = self.columns()
-        return View(self, config)
+        view = View(self, config)
+        self._views.append(view)
+        return view
+
+    def _update_callback(self):
+        cache = {}
+        for callback in self._callbacks:
+            callback.callback(cache)

@@ -177,7 +177,7 @@ PYBIND11_MODULE(libbinding, m)
      *
      * t_gnode
      */
-    py::class_<t_gnode>(m, "t_gnode")
+    py::class_<t_gnode, std::shared_ptr<t_gnode>>(m, "t_gnode")
         .def("get_id", reinterpret_cast<t_uindex (t_gnode::*)() const>(&t_gnode::get_id));
 
     /******************************************************************************
@@ -227,9 +227,7 @@ PYBIND11_MODULE(libbinding, m)
     py::class_<t_pool, std::shared_ptr<t_pool>>(m, "t_pool")
         .def(py::init<>())
         .def("unregister_gnode", &t_pool::unregister_gnode)
-        .def("_process", &t_pool::_process)
-        // .def("set_update_delegate", &t_pool::set_update_delegate)
-        ;
+        .def("_process", &t_pool::_process);
 
     /******************************************************************************
      *
