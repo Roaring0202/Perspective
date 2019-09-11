@@ -170,6 +170,7 @@ PYBIND11_MODULE(libbinding, m)
      */
     py::class_<t_schema>(m, "t_schema")
         .def(py::init<>())
+        .def("get_dtype", &t_schema::get_dtype)
         .def("columns", &t_schema::columns)
         .def("types", &t_schema::types);
 

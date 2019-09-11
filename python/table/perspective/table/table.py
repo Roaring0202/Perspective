@@ -64,13 +64,27 @@ class Table(object):
         return list(self.schema().keys())
 
     def update(self, data):
-        schema = self._table.get_schema()
+        types = self._table.get_schema().types()
         self._accessor = _PerspectiveAccessor(data)
-        self._accessor._types = schema.types()[:len(self._accessor.names())]
+        self._accessor._types = types[:len(self._accessor.names())]
         self._table = make_table(self._table, self._accessor, None, self._limit, self._index, t_op.OP_INSERT, True, False)
 
-    def remove(self, data):
-        pass
+    def remove(self, pkeys):
+        '''Removes the rows with the primary keys specified in `pkeys`.
+
+        If the table does not have an index, `remove()` has no effect. Removes propagate to views derived from the table.
+
+        Params:
+            pkeys (list) : a list of primary keys to indicate the rows that should be removed.
+        '''
+        if self._index == "":
+            return
+        pkeys = list(map(lambda idx: {self._index: idx}, pkeys))
+        types = [self._table.get_schema().get_dtype(self._index)]
+        self._accessor = _PerspectiveAccessor(pkeys)
+        self._accessor._names = [self._index]
+        self._accessor._types = types
+        make_table(self._table, self._accessor, None, self._limit, self._index, t_op.OP_DELETE, True, False)
 
     def view(self, config=None):
         config = config or {}
