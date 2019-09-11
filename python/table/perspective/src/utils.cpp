@@ -31,7 +31,7 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
     auto type = t_dtype::DTYPE_STR;
 
     // TODO consider refactor
-    if (value == "int") {
+    if (value == "int" || value == "integer") {
         // Python int
         type = t_dtype::DTYPE_INT64;
     } else if (value == "int8") {
@@ -54,7 +54,7 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
         // Numpy float16
         // type = t_dtype::DTYPE_FLOAT16;
         type = t_dtype::DTYPE_FLOAT32;
-    } else if (value == "float32") {
+    } else if (value == "float32" || value == "float") {
         // Numpy float32
         type = t_dtype::DTYPE_FLOAT32;
     } else if (value == "float64") {
@@ -64,10 +64,10 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
         // TODO
         // Numpy float128
         type = t_dtype::DTYPE_FLOAT64;
-    } else if (value == "str") {
+    } else if (value == "str" || value == "string") {
         // Python unicode str
         type = t_dtype::DTYPE_STR;
-    } else if (value == "bool") {
+    } else if (value == "bool" || value == "boolean") {
         // Python bool
         type = t_dtype::DTYPE_BOOL;
     } else if (value == "bool_") {

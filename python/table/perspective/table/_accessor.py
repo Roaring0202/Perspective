@@ -13,7 +13,7 @@ def _type_to_format(data_or_schema):
         return 0
     elif isinstance(data_or_schema, dict):
         for v in data_or_schema.values():
-            if isinstance(v, type):
+            if isinstance(v, type) or isinstance(v, str):
                 return 2
             elif isinstance(v, list) or iter(v):
                 return 1
@@ -60,9 +60,12 @@ class _PerspectiveAccessor(object):
         return self._row_count
 
     def marshal(self, cidx, i, type):
-        if self._format == 0:
-            return self._data_or_schema[i][list(self._data_or_schema[0].keys())[cidx]]
-        elif self._format == 1:
-            return self._data_or_schema[list(self._data_or_schema.keys())[cidx]][i]
-        else:
-            raise NotImplementedError()
+        try:
+            if self._format == 0:
+                return self._data_or_schema[i][list(self._data_or_schema[0].keys())[cidx]]
+            elif self._format == 1:
+                return self._data_or_schema[list(self._data_or_schema.keys())[cidx]][i]
+            else:
+                raise NotImplementedError()
+        except (KeyError, IndexError):
+            return None

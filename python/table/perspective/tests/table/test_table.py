@@ -39,7 +39,6 @@ class TestTable(object):
         bool_data = [{"a": True, "b": False}, {"a": True, "b": True}]
         tbl = Table(bool_data)
         assert tbl.size() == 2
-        # TODO: booleans cast as floats and ints
         assert tbl.schema() == {
             "a": "boolean",
             "b": "boolean"
@@ -67,19 +66,18 @@ class TestTable(object):
         str_data = [{"a": date.today(), "b": date.today()}]
         tbl = Table(str_data)
         assert tbl.size() == 1
+        assert tbl.schema() == {
+            "a": "date",
+            "b": "date"
+        }
 
     def test_table_datetime(self):
         str_data = [{"a": datetime.now(), "b": datetime.now()}]
         tbl = Table(str_data)
         assert tbl.size() == 1
-
-    def test_table_columns(self):
-        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
-        tbl = Table(data)
-        assert tbl.columns() == ["a", "b"]
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "integer"
+            "a": "datetime",
+            "b": "datetime"
         }
 
     def test_table_columnar(self):
@@ -91,6 +89,19 @@ class TestTable(object):
             "a": "integer",
             "b": "integer"
         }
+
+    
+    def test_table_columnar_mixed_length(self):
+        data = [{"a": 1.5, "b": 2.5}, {"a": 3.2}]
+        tbl = Table(data)
+        assert tbl.size() == 2
+        assert tbl.schema() == {
+            "a": "float",
+            "b": "float" 
+        }
+        assert tbl.view().to_dict() == [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": None}]
+
+    # schema
 
     def test_table_schema(self):
         data = {"a": int,
@@ -111,6 +122,89 @@ class TestTable(object):
             "f": "datetime"
         }
 
+    def test_table_readable_string_schema(self):
+        data = {"a": "integer",
+                "b": "float",
+                "c": "string",
+                "d": "boolean",
+                "e": "date",
+                "f": "datetime"}
+
+        tbl = Table(data)
+
+        assert tbl.schema() == {
+            "a": "integer",
+            "b": "float",
+            "c": "string",
+            "d": "boolean",
+            "e": "date",
+            "f": "datetime"
+        }
+
+    def test_table_output_readable_schema(self):
+        data = {"a": "int32",
+                "b": "float64",
+                "c": "str",
+                "d": "bool",
+                "e": "date",
+                "f": "datetime"}
+
+        tbl = Table(data)
+
+        assert tbl.schema() == {
+            "a": "integer",
+            "b": "float",
+            "c": "string",
+            "d": "boolean",
+            "e": "date",
+            "f": "datetime"
+        }
+
+    def test_table_mixed_schema(self):
+        data = {"a": "integer",
+                "b": float,
+                "c": str,
+                "d": "boolean",
+                "e": date,
+                "f": "datetime"}
+
+        tbl = Table(data)
+
+        assert tbl.schema() == {
+            "a": "integer",
+            "b": "float",
+            "c": "string",
+            "d": "boolean",
+            "e": "date",
+            "f": "datetime"
+        }
+
+    def test_table_symmetric_schema(self):
+        data = {
+            "a": [1, 2, 3], 
+            "b": [1.5, 2.5, 3.5], 
+            "c": ["a", "b", "c"], 
+            "d": [True, False, True], 
+            "e": [date.today(), date.today(), date.today()], 
+            "f": [datetime.now(), datetime.now(), datetime.now()]
+        }
+
+        tbl = Table(data)
+        schema = tbl.schema()
+
+        assert schema == {
+            "a": "integer",
+            "b": "float",
+            "c": "string",
+            "d": "boolean",
+            "e": "date",
+            "f": "datetime"
+        }
+
+        tbl2 = Table(schema)
+        
+        assert tbl2.schema() == schema
+
     # infer data types correctly
 
     def test_table_infer_int(self):
@@ -128,6 +222,31 @@ class TestTable(object):
         tbl = Table(data)
         assert tbl.schema() == {"a": "string"}
 
+    def test_table_infer_valid_date(self):
+        data = {"a": [None, None, None, None, None, None, "08/31/2019"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "datetime"}
+
+    def test_table_infer_invalid_date(self):
+        data = {"a": [None, None, None, None, None, None, "08/55/2019"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "string"}
+
+    def test_table_infer_valid_datetime(self):
+        data = {"a": [None, None, None, None, None, None, "08/31/2019 07:30:00"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "datetime"}
+    
+    def test_table_infer_invalid_datetime(self):
+        data = {"a": [None, None, None, None, None, None, "08/31/2019 25:30:00"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "string"}
+    
+    def test_table_infer_mixed_datetime(self):
+        data = {"a": [None, None, None, None, None, "08/11/2019", "1549257586108"]}
+        tbl = Table(data)
+        assert tbl.schema() == {"a": "datetime"}
+    
     # index
 
     def test_table_index(self):
@@ -139,7 +258,7 @@ class TestTable(object):
         ]
 
     # limit
-    
+
     def test_table_limit(self):
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data, {"limit": 1})

@@ -83,8 +83,8 @@ infer_type(t_val x, t_val date_validator) {
             t = t_dtype::DTYPE_FLOAT64;
         }
     } else if (py::isinstance<py::str>(x) || type_string == "str") {
-        if (date_validator.attr("check")(x).cast<bool>()) {
-            t = t_dtype::DTYPE_TIME;
+        if (date_validator.attr("is_valid")(x).cast<bool>()) {
+            t = t_dtype::DTYPE_TIME; // TODO: should be able to distinguish between dates and datetime inference
         } else {
             std::string lower = x.attr("lower")().cast<std::string>();
             if (lower == "true" || lower == "false") {
@@ -151,9 +151,21 @@ get_data_types(t_val data, std::int32_t format, std::vector<std::string> names,
     if (format == 2) {
         py::dict data_dict = data.cast<py::dict>();
 
+
         for (auto tup : data_dict) {
             auto name = tup.first.cast<std::string>();
-            auto value = py::str(tup.second.cast<py::object>().attr("__name__")).cast<std::string>();
+            auto data_type = tup.second.get_type().attr("__name__").cast<std::string>();
+            std::string value;
+
+            std::cout << data_type << std::endl;
+            if (data_type == "type") {
+                value = py::str(tup.second.cast<py::object>().attr("__name__")).cast<std::string>();
+            } else {
+                value = tup.second.cast<std::string>();
+            }
+
+            std::cout << value << std::endl;
+            
             t_dtype type;
 
             if (name == "__INDEX__") {
