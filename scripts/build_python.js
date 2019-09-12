@@ -45,7 +45,7 @@ try {
     }
 
     let build_cmd = `python3 -m pip install -r requirements.txt ${pip_target} &&\
-        python3 -m pip install pytest pytest-cov mock flake8 codecov ${pip_target} &&\
+        python3 -m pip install pytest pytest-cov mock flake8 codecov python-dateutil ${pip_target} &&\
         python3 setup.py build`;
 
     if (IS_DOCKER) {

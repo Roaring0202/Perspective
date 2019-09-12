@@ -29,13 +29,13 @@ class View(object):
         self._config = ViewConfig(config or {})
         self._sides = self.sides()
 
+        date_validator = self._table._accessor._date_validator
         if self._sides == 0:
-            # FIXME: weird date validator passing
-            self._view = make_view_zero(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_zero(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, date_validator)
         elif self._sides == 1:
-            self._view = make_view_one(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_one(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, date_validator)
         else:
-            self._view = make_view_two(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, self._table._accessor._date_validator)
+            self._view = make_view_two(self._table._table, str(random()), COLUMN_SEPARATOR_STRING, self._config, date_validator)
 
         self._column_only = self._view.is_column_only()
 
@@ -81,7 +81,7 @@ class View(object):
         If the view is aggregated, the aggregated dataset will be returned.
 
         Params:
-            options : dict
+            options (dict) :
                 user-provided options that specifies what data to return:
                 - start_row: defaults to 0
                 - end_row: defaults to the number of total rows in the view
@@ -103,7 +103,7 @@ class View(object):
         If the view is aggregated, the aggregated dataset will be returned.
 
         Params:
-            options : dict
+            options (dict) :
                 user-provided options that specifies what data to return:
                 - start_row: defaults to 0
                 - end_row: defaults to the number of total rows in the view
@@ -125,7 +125,7 @@ class View(object):
         If the view is aggregated, the aggregated dataset will be returned.
 
         Params:
-            options : dict
+            options (dict) :
                 user-provided options that specifies what data to return:
                 - start_row: defaults to 0
                 - end_row: defaults to the number of total rows in the view

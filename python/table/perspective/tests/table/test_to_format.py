@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import date, datetime
 from perspective.table import Table
 
 
@@ -23,6 +24,69 @@ class TestToFormat(object):
         tbl = Table(data)
         view = tbl.view()
         assert view.to_records() == data
+
+    def test_to_records_date(self):
+        today = date.today()
+        data = [{"a": today, "b": "string2"}, {"a": today, "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        dt = datetime(today.year, today.month, today.day)
+        assert view.to_records() == [{"a": dt, "b": "string2"}, {"a": dt, "b": "string4"}]
+
+    def test_to_records_date_no_dst(self):
+        # make sure that DST does not affect the way we read dates - if tm_dst in `t_date::get_tm()` isn't set to -1, it could reverse 1hr by assuming DST is not in effect.
+        today = date.today()
+        data = [{"a": today, "b": "string2"}, {"a": today, "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        dt = datetime(today.year, today.month, today.day)
+        assert view.to_records() == [{"a": dt, "b": "string2"}, {"a": dt, "b": "string4"}]
+
+    def test_to_records_date_str(self):
+        data = [{"a": "03/11/2019", "b": "string2"}, {"a": "03/12/2019", "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_records() == [{"a": datetime(2019, 3, 11), "b": "string2"}, {"a": datetime(2019, 3, 12), "b": "string4"}]
+
+    def test_to_records_date_str_month_first(self):
+        data = [{"a": "1/2/2019", "b": "string2"}, {"a": "3/4/2019", "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.schema() == {"a": "date", "b": "string"}
+        assert view.to_records() == [{"a": datetime(2019, 1, 2), "b": "string2"}, {"a": datetime(2019, 3, 4), "b": "string4"}]
+
+    def test_to_records_date_str_month_ymd(self):
+        data = [{"a": "2019/01/02", "b": "string2"}, {"a": "2019/03/04", "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.schema() == {"a": "date", "b": "string"}
+        assert view.to_records() == [{"a": datetime(2019, 1, 2), "b": "string2"}, {"a": datetime(2019, 3, 4), "b": "string4"}]
+
+    def test_to_records_datetime(self):
+        dt = datetime(2019, 9, 10, 19, 30, 59, 515000)
+        data = [{"a": dt, "b": "string2"}, {"a": dt, "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_records() == data  # should have symmetric input/output
+
+    def test_to_records_datetime_str(self):
+        data = [{"a": "03/11/2019 3:15PM", "b": "string2"}, {"a": "3/11/2019 3:20PM", "b": "string4"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_records() == [{"a": datetime(2019, 3, 11, 15, 15), "b": "string2"}, {"a": datetime(2019, 3, 11, 15, 20), "b": "string4"}]
+
+    def test_to_records_datetime_str_tz(self):
+        dt = "2019/07/25T15:30:00+05:00"
+        data = [{"a": dt}, {"a": dt}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_records() == [{"a": datetime(2019, 7, 25, 6, 30)}, {"a": datetime(2019, 7, 25, 6, 30)}]
+
+    def test_to_records_datetime_ms_str(self):
+        data = [{"a": "03/11/2019 3:15:15.999PM"}, {"a": "3/11/2019 3:15:16.001PM"}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_records() == [{"a": datetime(2019, 3, 11, 15, 15, 15, 999000)}, {"a": datetime(2019, 3, 11, 15, 15, 16, 1000)}]
 
     def test_to_records_none(self):
         data = [{"a": None, "b": 1}, {"a": None, "b": 2}]
@@ -81,6 +145,27 @@ class TestToFormat(object):
         assert view.to_dict() == {
             "a": [1.5, 3.5],
             "b": [2.5, 4.5]
+        }
+
+    def test_to_dict_date(self):
+        today = date.today()
+        dt = datetime(today.year, today.month, today.day)
+        data = [{"a": today, "b": 2}, {"a": today, "b": 4}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_dict() == {
+            "a": [dt, dt],
+            "b": [2, 4]
+        }
+
+    def test_to_dict_datetime(self):
+        dt = datetime(2019, 3, 15, 20, 30, 59, 6000)
+        data = [{"a": dt, "b": 2}, {"a": dt, "b": 4}]
+        tbl = Table(data)
+        view = tbl.view()
+        assert view.to_dict() == {
+            "a": [dt, dt],
+            "b": [2, 4]
         }
 
     def test_to_dict_bool(self):
@@ -171,6 +256,23 @@ class TestToFormat(object):
         v = view.to_numpy()
         assert np.array_equal(v["a"], np.array([True, True]))
         assert np.array_equal(v["b"], np.array([False, False]))
+
+    def test_to_numpy_date(self):
+        today = date.today()
+        dt = datetime(today.year, today.month, today.day)
+        data = [{"a": dt, "b": 2}, {"a": dt, "b": 4}]
+        tbl = Table(data)
+        view = tbl.view()
+        v = view.to_numpy()
+        assert np.array_equal(v["a"], np.array([dt, dt]))
+
+    def test_to_numpy_datetime(self):
+        dt = datetime(2019, 3, 15, 20, 30, 59, 6000)
+        data = [{"a": dt}, {"a": dt}]
+        tbl = Table(data)
+        view = tbl.view()
+        v = view.to_numpy()
+        assert np.array_equal(v["a"], np.array([dt, dt]))
 
     def test_to_numpy_string(self):
         data = [{"a": "string1", "b": "string2"}, {"a": "string3", "b": "string4"}]

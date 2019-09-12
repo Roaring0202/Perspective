@@ -13,11 +13,17 @@ from ._utils import _dtype_to_str
 
 class Table(object):
     def __init__(self, data_or_schema, config=None):
-        '''Perspective Table object
+        '''Construct a Table using the provided data or schema and optional configuration dictionary.
 
-        Arguments:
-            data_or_schema : dict/list/dataframe
-            config : dict
+        Tables are immutable - column names and data types cannot be changed after creation.
+
+        If a schema is provided, the table will be empty. Subsequent updates MUST conform to the column names and data types provided in the schema.
+
+        Params:
+            data_or_schema (dict/list/dataframe)
+            config (dict) : optional configurations for the Table:
+                - limit (int) : the maximum number of rows the Table should have. Updates past the limit will begin writing at row 0.
+                - index (string) : a string column name to use as the Table's primary key.
         '''
         config = config or {}
         self._accessor = _PerspectiveAccessor(data_or_schema)
@@ -28,27 +34,16 @@ class Table(object):
         self._callbacks = []
         self._views = []
 
-    def load(self, data_or_schema):
-        '''Configuration helper for constructing a view
-
-        Arguments:
-            data_or_schema : dict/list/dataframe
-        '''
-        pass
-
     def size(self):
-        '''Get size of the perspective table
-
-        Returns:
-            int : the size of the table
+        '''Returns the size of the Table, i.e. its row count
         '''
         return self._table.size()
 
     def schema(self):
-        '''Get perspective schema
+        '''Returns the schema of this Table. A schema provides the mapping of column names to data types, both of which are strings.
 
         Returns:
-           dict : A key-value mapping of column names to data types.
+            dict : A key-value mapping of column names to data types.
         '''
         s = self._table.get_schema()
         columns = s.columns()
@@ -64,6 +59,19 @@ class Table(object):
         return list(self.schema().keys())
 
     def update(self, data):
+        '''Update the Table with new data.
+
+        Updates on tables without an explicit `index` are treated as appends.
+
+        Updates on tables with an explicit `index` should have the index as part of the `data` param, as this instructs the engine
+        to locate the indexed row and write into it. If an index is not provided, the update is treated as an append.
+
+        Example:
+            - to update the row with primary key "abc" on a Table with {"index": "a"}, `data` should be [{"a": "abc", "b": "new data"}]
+
+        Params:
+            data (dict|list|df) : the data with which to update the Table
+        '''
         types = self._table.get_schema().types()
         self._accessor = _PerspectiveAccessor(data)
         self._accessor._types = types[:len(self._accessor.names())]
@@ -73,6 +81,9 @@ class Table(object):
         '''Removes the rows with the primary keys specified in `pkeys`.
 
         If the table does not have an index, `remove()` has no effect. Removes propagate to views derived from the table.
+
+        Example:
+            - to remove rows with primary keys "abc" and "def", provide ["abc", "def"].
 
         Params:
             pkeys (list) : a list of primary keys to indicate the rows that should be removed.

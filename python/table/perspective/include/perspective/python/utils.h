@@ -9,6 +9,9 @@
 #pragma once
 #ifdef PSP_ENABLE_PYTHON
 
+#include <cmath>
+#include <chrono>
+#include <pybind11/chrono.h>
 #include <perspective/base.h>
 #include <perspective/binding.h>
 #include <perspective/python/base.h>
@@ -35,6 +38,7 @@ static auto IS_BYTES = [](auto type_instance) { return type_instance.is(py::modu
  * Date Parsing
  */
 t_date pythondate_to_t_date(t_val date);
+std::int64_t pythondatetime_to_ms(t_val datetime);
 
 t_dtype type_string_to_t_dtype(std::string type, std::string name = "");
 t_dtype type_string_to_t_dtype(py::str type, py::str name = "");

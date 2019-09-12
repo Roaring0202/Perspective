@@ -6,6 +6,7 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 from ._date_validator import _PerspectiveDateValidator
+from perspective.table.libbinding import t_dtype
 
 
 def _type_to_format(data_or_schema):
@@ -59,13 +60,45 @@ class _PerspectiveAccessor(object):
     def row_count(self):
         return self._row_count
 
-    def marshal(self, cidx, i, type):
+    def get(self, cidx, ridx):
+        '''Get the element at the specified column and row index.
+
+        If the element does not exist, return None.
+
+        Params:
+            cidx (int)
+            ridx (int)
+
+        Returns:
+            object or None
+        '''
         try:
             if self._format == 0:
-                return self._data_or_schema[i][list(self._data_or_schema[0].keys())[cidx]]
+                return self._data_or_schema[ridx][list(self._data_or_schema[0].keys())[cidx]]
             elif self._format == 1:
-                return self._data_or_schema[list(self._data_or_schema.keys())[cidx]][i]
+                return self._data_or_schema[list(self._data_or_schema.keys())[cidx]][ridx]
             else:
                 raise NotImplementedError()
         except (KeyError, IndexError):
             return None
+
+    def marshal(self, cidx, ridx, type):
+        '''Returns the element at the specified column and row index, and marshals it into an object compatible with the core engine's `fill` method.
+
+        If DTYPE_DATE or DTYPE_TIME is specified for a string value, attempt to parse the string value or return `None`.
+
+        Params:
+            cidx (int)
+            ridx (int)
+            type (perspective.table.libbinding.t_dtype)
+
+        Returns:
+            object or None
+        '''
+        val = self.get(cidx, ridx)
+
+        # parse string dates/datetimes into objects
+        if isinstance(val, str) and (type == t_dtype.DTYPE_DATE or type == t_dtype.DTYPE_TIME):
+            val = self._date_validator.parse(val)
+
+        return val

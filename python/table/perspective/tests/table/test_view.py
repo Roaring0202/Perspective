@@ -60,13 +60,13 @@ class TestView(object):
         }
 
     # pivot depth
-    """ 
+    """
     def test_row_pivot_depth(self):
        data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
        tbl = Table(data)
        view = tbl.view({
            "row-pivots": ["a", "b"],
-           "row_pivot_depth": 1 
+           "row_pivot_depth": 1
        })
        assert view.to_records() == [{"__ROW_PATH__": [], "a": 4, "b": 6}, {"__ROW_PATH__": ["2", "1"], "a": 1, "b": 2}, {"__ROW_PATH__": ["4", "3"], "a": 3, "b": 4}]
        """

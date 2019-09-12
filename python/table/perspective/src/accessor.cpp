@@ -83,8 +83,9 @@ infer_type(t_val x, t_val date_validator) {
             t = t_dtype::DTYPE_FLOAT64;
         }
     } else if (py::isinstance<py::str>(x) || type_string == "str") {
-        if (date_validator.attr("is_valid")(x).cast<bool>()) {
-            t = t_dtype::DTYPE_TIME; // TODO: should be able to distinguish between dates and datetime inference
+        t_dtype parsed_type = date_validator.attr("format")(x).cast<t_dtype>();
+        if (parsed_type == t_dtype::DTYPE_DATE || parsed_type == t_dtype::DTYPE_TIME) {
+            t = parsed_type;
         } else {
             std::string lower = x.attr("lower")().cast<std::string>();
             if (lower == "true" || lower == "false") {

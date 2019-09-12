@@ -13,7 +13,7 @@ class ViewConfig(object):
     def __init__(self, config):
         '''Receives a user-provided config dict and standardizes it for consumption by the python client and the core engine.
 
-        Arguments:
+        Params:
             dict : the configuration dictionary provided by the user
         '''
         self._row_pivots = config.get('row-pivots', [])

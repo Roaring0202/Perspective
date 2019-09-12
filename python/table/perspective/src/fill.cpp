@@ -22,95 +22,88 @@ namespace binding {
  * Fill columns with data
  */
 
-// void
-// _fill_col_time(t_data_accessor accessor, std::shared_ptr<t_column> col, std::string name,
-//     std::int32_t cidx, t_dtype type, bool is_arrow, bool is_update) {
-//     t_uindex nrows = col->size();
+void
+_fill_col_time(t_data_accessor accessor, std::shared_ptr<t_column> col, std::string name,
+    std::int32_t cidx, t_dtype type, bool is_arrow, bool is_update) {
+    t_uindex nrows = col->size();
 
-//     if (is_arrow) {
-//         t_val data = accessor["values"];
-//         // arrow packs 64 bit into two 32 bit ints
-//         arrow::vecFromTypedArray(data, col->get_nth<t_time>(0), nrows * 2);
+    if (is_arrow) {
+        // t_val data = accessor["values"];
+        // arrow packs 64 bit into two 32 bit ints
+        // arrow::vecFromTypedArray(data, col->get_nth<t_time>(0), nrows * 2);
 
-//         std::int8_t unit = accessor["type"]["unit"].as<std::int8_t>();
-//         if (unit != /* Arrow.enum_.TimeUnit.MILLISECOND */ 1) {
-//             // Slow path - need to convert each value
-//             std::int64_t factor = 1;
-//             if (unit == /* Arrow.enum_.TimeUnit.NANOSECOND */ 3) {
-//                 factor = 1e6;
-//             } else if (unit == /* Arrow.enum_.TimeUnit.MICROSECOND */ 2) {
-//                 factor = 1e3;
-//             }
-//             for (auto i = 0; i < nrows; ++i) {
-//                 col->set_nth<std::int64_t>(i, *(col->get_nth<std::int64_t>(i)) / factor);
-//             }
-//         }
-//     } else {
-//         for (auto i = 0; i < nrows; ++i) {
-//             t_val item = accessor.call<t_val>("marshal", cidx, i, type);
+        // std::int8_t unit = accessor["type"]["unit"].as<std::int8_t>();
+        // if (unit != /* Arrow.enum_.TimeUnit.MILLISECOND */ 1) {
+            // Slow path - need to convert each value
+            // std::int64_t factor = 1;
+            // if (unit == /* Arrow.enum_.TimeUnit.NANOSECOND */ 3) {
+                // factor = 1e6;
+            // } else if (unit == /* Arrow.enum_.TimeUnit.MICROSECOND */ 2) {
+                // factor = 1e3;
+            // }
+            // for (auto i = 0; i < nrows; ++i) {
+                // col->set_nth<std::int64_t>(i, *(col->get_nth<std::int64_t>(i)) / factor);
+            // }
+        // }
+    } else {
+        for (auto i = 0; i < nrows; ++i) {
+            t_val item = accessor.attr("marshal")(cidx, i, type);
 
-//             if (item.isUndefined())
-//                 continue;
+            if (item.is_none()) {
+                if (is_update) {
+                    col->unset(i);
+                } else {
+                    col->clear(i);
+                }
+                continue;
+            }
 
-//             if (item.isNull()) {
-//                 if (is_update) {
-//                     col->unset(i);
-//                 } else {
-//                     col->clear(i);
-//                 }
-//                 continue;
-//             }
+            col->set_nth(i, pythondatetime_to_ms(item));
+        }
+    }
+}
 
-//             auto elem = static_cast<std::int64_t>(
-//                 item.call<t_val>("getTime").as<double>()); // dcol[i].as<T>();
-//             col->set_nth(i, elem);
-//         }
-//     }
-// }
+// TODO: implement
+void
+_fill_col_date(t_data_accessor accessor, std::shared_ptr<t_column> col, std::string name,
+    std::int32_t cidx, t_dtype type, bool is_arrow, bool is_update) {
+    t_uindex nrows = col->size();
 
-// void
-// _fill_col_date(t_data_accessor accessor, std::shared_ptr<t_column> col, std::string name,
-//     std::int32_t cidx, t_dtype type, bool is_arrow, bool is_update) {
-//     t_uindex nrows = col->size();
+    if (is_arrow) {
+        // t_val data = dcol["values"];
+        // // arrow packs 64 bit into two 32 bit ints
+        // arrow::vecFromTypedArray(data, col->get_nth<t_time>(0), nrows * 2);
 
-//     if (is_arrow) {
-//         // t_val data = dcol["values"];
-//         // // arrow packs 64 bit into two 32 bit ints
-//         // arrow::vecFromTypedArray(data, col->get_nth<t_time>(0), nrows * 2);
+        // std::int8_t unit = dcol["type"]["unit"].as<std::int8_t>();
+        // if (unit != /* Arrow.enum_.TimeUnit.MILLISECOND */ 1) {
+        //     // Slow path - need to convert each value
+        //     std::int64_t factor = 1;
+        //     if (unit == /* Arrow.enum_.TimeUnit.NANOSECOND */ 3) {
+        //         factor = 1e6;
+        //     } else if (unit == /* Arrow.enum_.TimeUnit.MICROSECOND */ 2) {
+        //         factor = 1e3;
+        //     }
+        //     for (auto i = 0; i < nrows; ++i) {
+        //         col->set_nth<std::int32_t>(i, *(col->get_nth<std::int32_t>(i)) / factor);
+        //     }
+        // }
+    } else {
+        for (auto i = 0; i < nrows; ++i) {
+            t_val item = accessor.attr("marshal")(cidx, i, type);
 
-//         // std::int8_t unit = dcol["type"]["unit"].as<std::int8_t>();
-//         // if (unit != /* Arrow.enum_.TimeUnit.MILLISECOND */ 1) {
-//         //     // Slow path - need to convert each value
-//         //     std::int64_t factor = 1;
-//         //     if (unit == /* Arrow.enum_.TimeUnit.NANOSECOND */ 3) {
-//         //         factor = 1e6;
-//         //     } else if (unit == /* Arrow.enum_.TimeUnit.MICROSECOND */ 2) {
-//         //         factor = 1e3;
-//         //     }
-//         //     for (auto i = 0; i < nrows; ++i) {
-//         //         col->set_nth<std::int32_t>(i, *(col->get_nth<std::int32_t>(i)) / factor);
-//         //     }
-//         // }
-//     } else {
-//         for (auto i = 0; i < nrows; ++i) {
-//             t_val item = accessor.call<t_val>("marshal", cidx, i, type);
+            if (item.is_none()) {
+                if (is_update) {
+                    col->unset(i);
+                } else {
+                    col->clear(i);
+                }
+                continue;
+            }
 
-//             if (item.isUndefined())
-//                 continue;
-
-//             if (item.isNull()) {
-//                 if (is_update) {
-//                     col->unset(i);
-//                 } else {
-//                     col->clear(i);
-//                 }
-//                 continue;
-//             }
-
-//             col->set_nth(i, pythondate_to_t_date(item));
-//         }
-//     }
-// }
+            col->set_nth(i, pythondate_to_t_date(item));
+        }
+    }
+}
 
 void
 _fill_col_bool(t_data_accessor accessor, std::shared_ptr<t_column> col, std::string name,
@@ -335,6 +328,90 @@ set_column_nth(t_column* col, t_uindex idx, t_val value) {
     }
 }
 
+void
+_fill_col_numeric(t_data_accessor accessor, t_data_table& tbl,
+    std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
+    bool is_arrow, bool is_update) {
+    t_uindex nrows = col->size();
+
+    if (is_arrow) {
+        // TODO
+        // t_val data = accessor["values"];
+
+        // switch (type) {
+        //     case DTYPE_INT8: {
+        //         arrow::vecFromTypedArray(data, col->get_nth<std::int8_t>(0), nrows);
+        //     } break;
+        //     case DTYPE_INT16: {
+        //         arrow::vecFromTypedArray(data, col->get_nth<std::int16_t>(0), nrows);
+        //     } break;
+        //     case DTYPE_INT32: {
+        //         arrow::vecFromTypedArray(data, col->get_nth<std::int32_t>(0), nrows);
+        //     } break;
+        //     case DTYPE_FLOAT32: {
+        //         arrow::vecFromTypedArray(data, col->get_nth<float>(0), nrows);
+        //     } break;
+        //     case DTYPE_FLOAT64: {
+        //         arrow::vecFromTypedArray(data, col->get_nth<double>(0), nrows);
+        //     } break;
+        //     default:
+        //         break;
+        // }
+    } else {
+        for (auto i = 0; i < nrows; ++i) {
+            t_val item = accessor.attr("marshal")(cidx, i, type);
+
+            if (item.is_none()) {
+                if (is_update) {
+                    col->unset(i);
+                } else {
+                    col->clear(i);
+                }
+                continue;
+            }
+
+            switch (type) {
+                case DTYPE_INT8: {
+                    col->set_nth(i, item.cast<std::int8_t>());
+                } break;
+                case DTYPE_INT16: {
+                    col->set_nth(i, item.cast<std::int16_t>());
+                } break;
+                case DTYPE_INT32: {
+                    // This handles cases where a long sequence of e.g. 0 precedes a clearly
+                    // float value in an inferred column. Would not be needed if the type
+                    // inference checked the entire column/we could reset parsing.
+                    double fval = item.cast<double>();
+                    if (fval > 2147483647 || fval < -2147483648) {
+                        WARN("Promoting to float");
+                        tbl.promote_column(name, DTYPE_FLOAT64, i, true);
+                        col = tbl.get_column(name);
+                        type = DTYPE_FLOAT64;
+                        col->set_nth(i, fval);
+                    } else if (isnan(fval)) {
+                        WARN("Promoting to string");
+                        tbl.promote_column(name, DTYPE_STR, i, false);
+                        col = tbl.get_column(name);
+                        _fill_col_string(
+                            accessor, col, name, cidx, DTYPE_STR, is_arrow, is_update);
+                        return;
+                    } else {
+                        col->set_nth(i, static_cast<std::int32_t>(fval));
+                    }
+                } break;
+                case DTYPE_FLOAT32: {
+                    col->set_nth(i, item.cast<float>());
+                } break;
+                case DTYPE_FLOAT64: {
+                    col->set_nth(i, item.cast<double>());
+                } break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
 // TODO
 // template <>
 // void
@@ -444,90 +521,6 @@ set_column_nth(t_column* col, t_uindex idx, t_val value) {
 // }
 
 void
-_fill_col_numeric(t_data_accessor accessor, t_data_table& tbl,
-    std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
-    bool is_arrow, bool is_update) {
-    t_uindex nrows = col->size();
-
-    if (is_arrow) {
-        // TODO
-        // t_val data = accessor["values"];
-
-        // switch (type) {
-        //     case DTYPE_INT8: {
-        //         arrow::vecFromTypedArray(data, col->get_nth<std::int8_t>(0), nrows);
-        //     } break;
-        //     case DTYPE_INT16: {
-        //         arrow::vecFromTypedArray(data, col->get_nth<std::int16_t>(0), nrows);
-        //     } break;
-        //     case DTYPE_INT32: {
-        //         arrow::vecFromTypedArray(data, col->get_nth<std::int32_t>(0), nrows);
-        //     } break;
-        //     case DTYPE_FLOAT32: {
-        //         arrow::vecFromTypedArray(data, col->get_nth<float>(0), nrows);
-        //     } break;
-        //     case DTYPE_FLOAT64: {
-        //         arrow::vecFromTypedArray(data, col->get_nth<double>(0), nrows);
-        //     } break;
-        //     default:
-        //         break;
-        // }
-    } else {
-        for (auto i = 0; i < nrows; ++i) {
-            t_val item = accessor.attr("marshal")(cidx, i, type);
-
-            if (item.is_none()) {
-                if (is_update) {
-                    col->unset(i);
-                } else {
-                    col->clear(i);
-                }
-                continue;
-            }
-
-            switch (type) {
-                case DTYPE_INT8: {
-                    col->set_nth(i, item.cast<std::int8_t>());
-                } break;
-                case DTYPE_INT16: {
-                    col->set_nth(i, item.cast<std::int16_t>());
-                } break;
-                case DTYPE_INT32: {
-                    // This handles cases where a long sequence of e.g. 0 precedes a clearly
-                    // float value in an inferred column. Would not be needed if the type
-                    // inference checked the entire column/we could reset parsing.
-                    double fval = item.cast<double>();
-                    if (fval > 2147483647 || fval < -2147483648) {
-                        WARN("Promoting to float");
-                        tbl.promote_column(name, DTYPE_FLOAT64, i, true);
-                        col = tbl.get_column(name);
-                        type = DTYPE_FLOAT64;
-                        col->set_nth(i, fval);
-                    } else if (isnan(fval)) {
-                        WARN("Promoting to string");
-                        tbl.promote_column(name, DTYPE_STR, i, false);
-                        col = tbl.get_column(name);
-                        _fill_col_string(
-                            accessor, col, name, cidx, DTYPE_STR, is_arrow, is_update);
-                        return;
-                    } else {
-                        col->set_nth(i, static_cast<std::int32_t>(fval));
-                    }
-                } break;
-                case DTYPE_FLOAT32: {
-                    col->set_nth(i, item.cast<float>());
-                } break;
-                case DTYPE_FLOAT64: {
-                    col->set_nth(i, item.cast<double>());
-                } break;
-                default:
-                    break;
-            }
-        }
-    }
-}
-
-void
 _fill_data_helper(t_data_accessor accessor, t_data_table& tbl,
     std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
     bool is_arrow, bool is_update) {
@@ -539,10 +532,10 @@ _fill_data_helper(t_data_accessor accessor, t_data_table& tbl,
             _fill_col_bool(accessor, col, name, cidx, type, is_arrow, is_update);
         } break;
         case DTYPE_DATE: {
-            // _fill_col_date(accessor, col, name, cidx, type, is_arrow, is_update);
+            _fill_col_date(accessor, col, name, cidx, type, is_arrow, is_update);
         } break;
         case DTYPE_TIME: {
-            // _fill_col_time(accessor, col, name, cidx, type, is_arrow, is_update);
+            _fill_col_time(accessor, col, name, cidx, type, is_arrow, is_update);
         } break;
         case DTYPE_STR: {
             _fill_col_string(accessor, col, name, cidx, type, is_arrow, is_update);

@@ -27,6 +27,17 @@ pythondate_to_t_date(t_val date) {
         date.attr("day").cast<std::int32_t>());
 }
 
+std::int64_t
+pythondatetime_to_ms(t_val datetime) {
+    /**
+     * Rounding the python timestamp to an int causes microsecond-level precision issues. This can be exposed by
+     * passing a datetime with the `microsecond` field set to a roundable value, i.e. 5500. On conversion, the 
+     * microsecond value becomes 6000 due to the rounding error.
+     */
+    auto ms = datetime.attr("timestamp")().cast<double>() * 1000;
+    return std::round(ms);
+}
+
 t_dtype type_string_to_t_dtype(std::string value, std::string name){
     auto type = t_dtype::DTYPE_STR;
 
@@ -120,13 +131,13 @@ scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
                 double y = *reinterpret_cast<double*>(&x);
                 return py::cast(y);
             } else if (cast_string) {
-                double ms = scalar.to_double();
-                return py::cast(ms);
-                //t_val date = t_val::global("Date").new_(ms);
-                //return date.call<t_val>("toLocaleString");
+                return py::cast(scalar.to_string(false)); // should reimplement
             } else {
-                // TODO: should return python datetime
-                return py::cast(scalar.to_double());
+                auto ms = std::chrono::milliseconds(scalar.to_int64());
+                std::cout << scalar.to_int64() << std::endl;
+                auto time_point = std::chrono::time_point<std::chrono::system_clock>(ms);
+                std::cout << time_point.time_since_epoch().count() << std::endl;
+                return py::cast(time_point);
             }
         }
         case DTYPE_FLOAT64:
@@ -140,7 +151,14 @@ scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
             }
         }
         case DTYPE_DATE: {
-            CRITICAL("date return is not implemented"); // TODO: implement python datetime return
+            t_date date = scalar.get<t_date>();
+            std::tm tm = date.get_tm();
+            std::cout << tm.tm_year << " " << tm.tm_mon << " " << tm.tm_mday << std::endl;
+            auto mkt = std::mktime(&tm);
+            std::cout << mkt << std::endl;
+            auto time_point = std::chrono::system_clock::from_time_t(mkt);
+            std::cout << time_point.time_since_epoch().count() << std::endl;
+            return py::cast(time_point);
         }
         case DTYPE_UINT8:
         case DTYPE_UINT16:

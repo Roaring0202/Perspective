@@ -39,7 +39,12 @@
             // xhr.responseType = "arraybuffer"
             // xhr.onload = function() {
                 var el = document.getElementsByTagName('perspective-viewer')[0];
-                const table = perspective.shared_worker().table([{"a": 1, "b": 2}, {"a": 3}]);
+                const table = perspective.shared_worker().table([{"a": "abc", "b": new Date(), "c": 3}], {index: "a"});
+                for (let i = 0; i < 100; i++) {
+
+                table.update([{"a": "abc", "b": ""}])
+                }
+                //table.update([{"a": 3, "b": 1}])
                 const v = table.view()
                 console.log(await v.to_json())
             // }
