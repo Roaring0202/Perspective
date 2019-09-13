@@ -1,4 +1,5 @@
 import numpy as np
+import pytz
 from datetime import date, datetime
 from perspective.table import Table
 
@@ -80,7 +81,12 @@ class TestToFormat(object):
         data = [{"a": dt}, {"a": dt}]
         tbl = Table(data)
         view = tbl.view()
-        assert view.to_records() == [{"a": datetime(2019, 7, 25, 6, 30)}, {"a": datetime(2019, 7, 25, 6, 30)}]
+        tz1 = datetime(2019, 7, 25, 6, 30, tzinfo=pytz.timezone('Etc/GMT+5')).replace(tzinfo=pytz.utc)
+        tz2 = datetime(2019, 7, 25, 6, 30, tzinfo=pytz.timezone('Etc/GMT+5')).replace(tzinfo=pytz.utc)
+        records = view.to_records()
+        for r in records:
+            r["a"] = r["a"].replace(tzinfo=pytz.utc)
+        assert records == [{"a": tz1}, {"a": tz2}]
 
     def test_to_records_datetime_ms_str(self):
         data = [{"a": "03/11/2019 3:15:15.999PM"}, {"a": "3/11/2019 3:15:16.001PM"}]
