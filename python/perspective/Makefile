@@ -36,6 +36,7 @@ preinstall:  ## install dependencies
 
 docs:  ## make documentation
 	make -C ./docs html
+	make -C ./docs markdown
 
 dist:  ## dist to pypi
 	rm -rf dist build
