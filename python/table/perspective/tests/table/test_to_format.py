@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytz
 from datetime import date, datetime
 from perspective.table import Table
@@ -326,3 +327,25 @@ class TestToFormat(object):
         v = view.to_numpy()
         assert np.array_equal(v["2|a"], np.array([1, 1]))
         assert np.array_equal(v["2|b"], np.array([2, 2]))
+
+
+    def test_to_pandas_df_simple(self):
+        data = [{"a": 1, "b": 2}, {"a": 1, "b": 2}]
+        df = pd.DataFrame(data)
+        tbl = Table(df)
+        view = tbl.view()
+        df2 = view.to_df()
+        assert np.array_equal(df2.columns, df.columns)
+        assert np.array_equal(df2["a"].values, df["a"].values)
+        assert np.array_equal(df2["b"].values, df["b"].values)
+
+    def test_to_pandas_df_simple_series(self):
+        inp = pd.Series([1, 2, 3], name="a")
+        df = pd.DataFrame()
+        df["a"] = pd.Series([1, 2, 3])
+        tbl = Table(inp)
+        view = tbl.view()
+        df2 = view.to_df()
+        assert np.array_equal(df2.columns, df.columns)
+        assert np.array_equal(df2["a"].values, df["a"].values)
+
