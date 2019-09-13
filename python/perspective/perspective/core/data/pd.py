@@ -9,39 +9,49 @@ import sys
 from .base import Data
 
 
+def deconstruct_pandas(data):
+    import pandas as pd
+    kwargs = {}
+
+    # level unstacking
+    if isinstance(data, pd.DataFrame) and isinstance(data.columns, pd.MultiIndex):
+        data = pd.DataFrame(data.unstack())
+        columns = list(x for x in data.index.names if x)
+        kwargs['columnpivots'] = list(x for x in data.index.names if x)
+        kwargs['rowpivots'] = []
+        orig_columns = [' ' for _ in data.columns.tolist()]
+
+        # deal with indexes
+        if len(columns) < len(data.index.names):
+            for i in range(len(data.index.names) - len(columns)):
+                if i == 0:
+                    columns.append('index')
+                    kwargs['rowpivots'].append('index')
+                else:
+                    columns.append('index-{}'.format(i))
+                    kwargs['rowpivots'].append('index-{}'.format(i))
+
+        # all columns in index
+        columns += orig_columns
+        data.reset_index(inplace=True)
+        data.columns = columns
+
+        # use these columns
+        kwargs['columns'] = orig_columns
+
+    if isinstance(data.index, pd.MultiIndex):
+        kwargs['rowpivots'] = list(data.index.names)
+        kwargs['columns'] = data.columns.tolist()
+
+    return data, kwargs
+
+
 class PandasData(Data):
     def __init__(self, data, schema, columns, transfer_as_arrow=False, **kwargs):
         import pandas as pd
-        # level unstacking
 
-        if isinstance(data, pd.DataFrame) and isinstance(data.columns, pd.MultiIndex):
-            data = pd.DataFrame(data.unstack())
-            columns = list(x for x in data.index.names if x)
-            kwargs['columnpivots'] = list(x for x in data.index.names if x)
-            kwargs['rowpivots'] = []
-            orig_columns = [' ' for _ in data.columns.tolist()]
-
-            # deal with indexes
-            if len(columns) < len(data.index.names):
-                for i in range(len(data.index.names) - len(columns)):
-                    if i == 0:
-                        columns.append('index')
-                        kwargs['rowpivots'].append('index')
-                    else:
-                        columns.append('index-{}'.format(i))
-                        kwargs['rowpivots'].append('index-{}'.format(i))
-
-            # all columns in index
-            columns += orig_columns
-            data.reset_index(inplace=True)
-            data.columns = columns
-
-            # use these columns
-            kwargs['columns'] = orig_columns
-
-        if isinstance(data.index, pd.MultiIndex):
-            kwargs['rowpivots'] = list(data.index.names)
-            kwargs['columns'] = data.columns.tolist()
+        data, new_kwargs = deconstruct_pandas(data)
+        kwargs.update(new_kwargs)
 
         # copy or not
         if isinstance(data, pd.Series) or 'index' not in map(lambda x: str(x).lower(), data.columns):

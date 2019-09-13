@@ -6,8 +6,6 @@ Python APIs for [perspective](https://github.com/finos/perspective) front end
 [![codecov](https://codecov.io/gh/finos/perspective/branch/master/graph/badge.svg)](https://codecov.io/gh/finos/perspective)
 [![PyPI](https://img.shields.io/pypi/v/perspective-python.svg)](https://pypi.python.org/pypi/perspective-python)
 [![PyPI](https://img.shields.io/pypi/l/perspective-python.svg)](https://pypi.python.org/pypi/perspective-python)
-[![Docs](https://img.shields.io/readthedocs/perspective-python.svg)](https://perspective-python.readthedocs.io)
-[![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/finos/perspective)
 
 
 ## Install
@@ -29,20 +27,18 @@ or from source:
 `make labextension`
 
 ## Getting Started
-[Read the docs!](http://perspective-python.readthedocs.io/en/latest/index.html)
+[Example Notebooks](https://github.com/finos/perspective/tree/master/python/perspective/examples)
 
-[Example Notebooks](https://github.com/timkpaine/perspective-python/tree/master/examples)
-
-![](https://github.com/timkpaine/perspective-python/raw/master/docs/img/scatter.png)
+![](https://github.com/finos/perspective/raw/master/python/perspective/docs/img/scatter.png)
 
 
 ## Pandas Pivot integration
 
 #### Index - Multiindex pivot
-![](https://github.com/timkpaine/perspective-python/raw/master/docs/img/pandas1.png)
+![](https://github.com/finos/perspective/raw/master/python/perspective/docs/img/pandas1.png)
 
 #### Column - Multiindex pivot
-![](https://github.com/timkpaine/perspective-python/raw/master/docs/img/pandas2.png)
+![](https://github.com/finos/perspective/raw/master/python/perspective/docs/img/pandas2.png)
 
 ## C++ Integration
 This package is primarily focused on integrating with the WebAssembly version of Perspective. To build the C++ side, install `perspective-python[table]`, from the [Perspective main library](https://github.com/finos/perspective/tree/master/python).

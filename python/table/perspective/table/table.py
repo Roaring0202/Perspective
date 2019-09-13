@@ -40,7 +40,7 @@ class Table(object):
         return self._table.size()
 
     def schema(self):
-        '''Returns the schema of this Table. A schema provides the mapping of column names to data types, both of which are strings.
+        '''Returns the schema of this Table. A schema provides the mapping of column names to data types.
 
         Returns:
             dict : A key-value mapping of column names to data types.

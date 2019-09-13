@@ -37,7 +37,7 @@ class _PerspectiveDateValidator(object):
         '''
         try:
             parsed = parse(str)
-            if parsed.hour == 0 and parsed.minute == 0 and parsed.second == 0 and parsed.microsecond == 0:
+            if (parsed.hour, parsed.minute, parsed.second, parsed.microsecond) == (0, 0, 0, 0):
                 return t_dtype.DTYPE_DATE
             else:
                 return t_dtype.DTYPE_TIME

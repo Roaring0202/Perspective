@@ -22,8 +22,8 @@ class TestTable(object):
         tbl = Table(data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "integer"
+            "a": int,
+            "b": int
         }
 
     def test_table_nones(self):
@@ -31,8 +31,8 @@ class TestTable(object):
         tbl = Table(none_data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "integer"
+            "a": int,
+            "b": int
         }
 
     def test_table_bool(self):
@@ -40,8 +40,8 @@ class TestTable(object):
         tbl = Table(bool_data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "boolean",
-            "b": "boolean"
+            "a": bool,
+            "b": bool
         }
 
     def test_table_float(self):
@@ -49,8 +49,8 @@ class TestTable(object):
         tbl = Table(float_data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "float",
-            "b": "float"
+            "a": float,
+            "b": float
         }
 
     def test_table_str(self):
@@ -58,8 +58,8 @@ class TestTable(object):
         tbl = Table(str_data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "string",
-            "b": "string"
+            "a": str,
+            "b": str
         }
 
     def test_table_date(self):
@@ -67,8 +67,8 @@ class TestTable(object):
         tbl = Table(str_data)
         assert tbl.size() == 1
         assert tbl.schema() == {
-            "a": "date",
-            "b": "date"
+            "a": date,
+            "b": date
         }
 
     def test_table_datetime(self):
@@ -76,8 +76,8 @@ class TestTable(object):
         tbl = Table(str_data)
         assert tbl.size() == 1
         assert tbl.schema() == {
-            "a": "datetime",
-            "b": "datetime"
+            "a": datetime,
+            "b": datetime
         }
 
     def test_table_columnar(self):
@@ -86,8 +86,8 @@ class TestTable(object):
         assert tbl.columns() == ["a", "b"]
         assert tbl.size() == 3
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "integer"
+            "a": int,
+            "b": int
         }
 
     def test_table_columnar_mixed_length(self):
@@ -95,8 +95,8 @@ class TestTable(object):
         tbl = Table(data)
         assert tbl.size() == 2
         assert tbl.schema() == {
-            "a": "float",
-            "b": "float"
+            "a": float,
+            "b": float
         }
         assert tbl.view().to_records() == [{"a": 1.5, "b": 2.5}, {"a": 3.2, "b": None}]
 
@@ -113,12 +113,12 @@ class TestTable(object):
         tbl = Table(data)
 
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "float",
-            "c": "string",
-            "d": "boolean",
-            "e": "date",
-            "f": "datetime"
+            "a": int,
+            "b": float,
+            "c": str,
+            "d": bool,
+            "e": date,
+            "f": datetime
         }
 
     def test_table_readable_string_schema(self):
@@ -132,12 +132,12 @@ class TestTable(object):
         tbl = Table(data)
 
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "float",
-            "c": "string",
-            "d": "boolean",
-            "e": "date",
-            "f": "datetime"
+            "a": int,
+            "b": float,
+            "c": str,
+            "d": bool,
+            "e": date,
+            "f": datetime
         }
 
     def test_table_output_readable_schema(self):
@@ -151,31 +151,31 @@ class TestTable(object):
         tbl = Table(data)
 
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "float",
-            "c": "string",
-            "d": "boolean",
-            "e": "date",
-            "f": "datetime"
+            "a": int,
+            "b": float,
+            "c": str,
+            "d": bool,
+            "e": date,
+            "f": datetime
         }
 
     def test_table_mixed_schema(self):
-        data = {"a": "integer",
+        data = {"a": int,
                 "b": float,
                 "c": str,
-                "d": "boolean",
+                "d": bool,
                 "e": date,
-                "f": "datetime"}
+                "f": datetime}
 
         tbl = Table(data)
 
         assert tbl.schema() == {
-            "a": "integer",
-            "b": "float",
-            "c": "string",
-            "d": "boolean",
-            "e": "date",
-            "f": "datetime"
+            "a": int,
+            "b": float,
+            "c": str,
+            "d": bool,
+            "e": date,
+            "f": datetime
         }
 
     def test_table_symmetric_schema(self):
@@ -192,12 +192,12 @@ class TestTable(object):
         schema = tbl.schema()
 
         assert schema == {
-            "a": "integer",
-            "b": "float",
-            "c": "string",
-            "d": "boolean",
-            "e": "date",
-            "f": "datetime"
+            "a": int,
+            "b": float,
+            "c": str,
+            "d": bool,
+            "e": date,
+            "f": datetime
         }
 
         tbl2 = Table(schema)
