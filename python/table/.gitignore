@@ -106,3 +106,4 @@ ENV/
 _depr
 psp_test
 perspective/core
+docs/api

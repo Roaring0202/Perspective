@@ -108,3 +108,4 @@ psp_test
 yarn.lock
 perspective/node/assets
 perspective/core
+docs/api

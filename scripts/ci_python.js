@@ -39,10 +39,11 @@ try {
     let cmd;
     let build_cmd =
         "python3 -m pip install -r requirements.txt &&\
-        python3 -m pip install pytest pytest-cov flake8 codecov pylantern numpy scipy pandas matplotlib &&\
+        python3 -m pip install pytest pytest-cov flake8 codecov pylantern numpy scipy pandas matplotlib sphinx sphinx_markdown_builder &&\
         python3 setup.py build &&\
         python3 -m flake8 perspective && echo OK &&\
         python3 -m pytest -v perspective --cov=perspective &&\
+        make -C ./docs html &&\
         codecov --token 0f25973b-091f-42fe-a469-95d1c6f7a957";
 
     if (process.env.PSP_DOCKER) {
