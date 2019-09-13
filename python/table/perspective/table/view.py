@@ -144,7 +144,9 @@ class View(object):
         pass
 
     def to_df(self, options=None):
-        pass
+        import pandas
+        cols = self.to_numpy(options=options)
+        return pandas.DataFrame(cols)
 
     def _to_format_helper(self, options=None):
         options = options or {}
