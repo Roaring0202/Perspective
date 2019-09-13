@@ -77,16 +77,14 @@ class TestToFormat(object):
         assert view.to_records() == [{"a": datetime(2019, 3, 11, 15, 15), "b": "string2"}, {"a": datetime(2019, 3, 11, 15, 20), "b": "string4"}]
 
     def test_to_records_datetime_str_tz(self):
-        dt = "2019/07/25T15:30:00+05:00"
+        dt = "2019/07/25T15:30:00+00:00"
         data = [{"a": dt}, {"a": dt}]
         tbl = Table(data)
         view = tbl.view()
-        tz1 = datetime(2019, 7, 25, 6, 30, tzinfo=pytz.timezone('Etc/GMT+5')).replace(tzinfo=pytz.utc)
-        tz2 = datetime(2019, 7, 25, 6, 30, tzinfo=pytz.timezone('Etc/GMT+5')).replace(tzinfo=pytz.utc)
         records = view.to_records()
         for r in records:
             r["a"] = r["a"].replace(tzinfo=pytz.utc)
-        assert records == [{"a": tz1}, {"a": tz2}]
+        assert records == [{"a": datetime(2019, 7, 25, 15, 30, tzinfo=pytz.utc)}, {"a": datetime(2019, 7, 25, 15, 30, tzinfo=pytz.utc)}]
 
     def test_to_records_datetime_ms_str(self):
         data = [{"a": "03/11/2019 3:15:15.999PM"}, {"a": "3/11/2019 3:15:16.001PM"}]
