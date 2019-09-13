@@ -39,8 +39,7 @@ try {
 
     let cmd;
     let lint_cmd = `python3 -m flake8 perspective && echo "lint passed!"`;
-    let fix_cmd = `python3 -m pip install autopep8 &&\
-        autopep8 -v --in-place --aggressive --recursive --exclude build . &&\
+    let fix_cmd = `autopep8 -v --in-place --aggressive --recursive --exclude build . &&\
         echo "autopep8 formatting complete!"`;
 
     if (process.env.PSP_DOCKER) {

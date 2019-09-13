@@ -29,7 +29,7 @@ with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 try:
     # non dev install
     import perspective.core
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     try:
         if not os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'perspective', 'perspective', 'core')):
             raise Exception('Must install perspective-python')
