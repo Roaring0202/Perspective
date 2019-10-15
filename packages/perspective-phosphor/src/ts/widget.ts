@@ -15,7 +15,7 @@ import "@finos/perspective-viewer-highcharts";
 import { Message } from '@phosphor/messaging';
 import { Widget } from '@phosphor/widgets';
 import { MIME_TYPE, PSP_CLASS, PSP_CONTAINER_CLASS, PSP_CONTAINER_CLASS_DARK } from './utils';
-import { Table } from '@finos/perspective';
+import { Table, TableData} from '@finos/perspective';
 
 import { PerspectiveViewer, PerspectiveViewerOptions } from '@finos/perspective-viewer';
 
@@ -136,13 +136,25 @@ export
         }
     }
 
+    save(){
+        return this.viewer.save()
+    }
+
+    restore(config: any): Promise<void>{
+        return this.viewer.restore(config)
+    }
+
     /**
      * Load either a `perspective.table` into the viewer.
      *
      * @param table a `perspective.table` object.
      */
-    load(table : Table) : void {
+    load(table : TableData | Table) : void {
         this.viewer.load(table);
+    }
+
+    get table(){
+        return this.viewer.table;
     }
     
     /******************************************************************************

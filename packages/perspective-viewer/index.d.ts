@@ -12,6 +12,7 @@ declare module '@finos/perspective-viewer' {
         save(): any;
         restore(x: any): Promise<void>;
         restyleElement(): void;
+        readonly table?: TableData | Table;
     }
 
     export interface PerspectiveViewerOptions extends ViewConfig {

@@ -1,0 +1,22 @@
+@import "~@phosphor/widgets/style/index.css";
+@import "./tabbar.less";
+@import "./dockpanel.less";
+@import "./menu.less";
+ @import "./widget.less";
+@import "~@finos/perspective-viewer/dist/themes/material.less";
+
+perspective-viewer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 4px;
+    right: 4px;
+    bottom: 8px;
+    overflow: visible !important;
+    --plugin--border: 1px solid #eaeaea;;
+    --plugin--box-shadow: 0px 2px 3px rgba(0,0,0,0.2); 
+}
