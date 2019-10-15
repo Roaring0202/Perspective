@@ -31,7 +31,7 @@ module.exports = {
     },
     output: {
         filename: "index.js",
-        libraryTarget: "umd",
-        path: path.resolve(__dirname, "dist/esm")
+        libraryTarget: "commonjs",
+        path: path.resolve(__dirname, "dist/cjs")
     }
 };

@@ -10,7 +10,6 @@
 import {find} from "@phosphor/algorithm";
 import {DockPanel, TabBar, Widget} from "@phosphor/widgets";
 import {Menu} from "@phosphor/widgets";
-import "../less/layout.less";
 import {createCommands} from "./contextmenu";
 import {PerspectiveTabBar} from "./tabbar";
 import {PerspectiveTabBarRenderer} from "./tabbarrenderer";
@@ -70,7 +69,7 @@ export class PerspectiveDockPanel extends DockPanel {
         super.addWidget(widget, options);
     }
 
-    public deserialize(layout: DockPanel.ILayoutConfig): void {
+    public deserialize(layout: any): void {
         const newLayout = this.mapWidgets(this.createWidget, layout);
         this.restoreLayout(newLayout);
     }
@@ -151,7 +150,7 @@ export class PerspectiveDockPanel extends DockPanel {
         });
     }
 
-    private createWidget = (config: any) => {
+    public createWidget = (config: any) => {
         // TODO I should be able to instantiate perspective with the config in one call
         const widget = new PerspectiveWidget(config.name);
         widget.restore(config);
