@@ -9,7 +9,7 @@
 
 import {find} from "@phosphor/algorithm";
 import {DockPanel, TabBar, Widget} from "@phosphor/widgets";
-import {ContextMenu} from "@phosphor/widgets";
+import {Menu} from "@phosphor/widgets";
 import "../less/layout.less";
 import {createCommands} from "./contextmenu";
 import {PerspectiveTabBar} from "./tabbar";
@@ -44,6 +44,8 @@ export class PerspectiveDockPanel extends DockPanel {
     private commands: any;
     private minimizedLayout: any;
 
+    private listeners: WeakMap<PerspectiveWidget, Function>;
+
     constructor(name: string, options?: DockPanel.IOptions) {
         super({renderer: new PerspectiveDockPanelRenderer(), spacing: 14, ...options});
 
@@ -52,13 +54,14 @@ export class PerspectiveDockPanel extends DockPanel {
 
         this.commands = createCommands(this);
         this.addTabbarEventListeners();
+        this.listeners = new WeakMap();
     }
 
     public duplicate(widget: PerspectiveWidget): void {
         const newWidget = new PerspectiveWidget(widget.name);
-        newWidget.load(widget.table);
         newWidget.restore(widget.save()).then(() => {
             this.addWidget(newWidget, {mode: "split-right", ref: widget});
+            newWidget.load(widget.table);
         });
     }
 
@@ -104,24 +107,21 @@ export class PerspectiveDockPanel extends DockPanel {
     }
 
     private createMenu(widget: any) {
-        const contextMenu = new ContextMenu({commands: this.commands});
-        contextMenu.addItem({command: "perspective:duplicate", selector: ".p-Widget", args: {widget}});
+        const contextMenu = new Menu({commands: this.commands});
+        contextMenu.addItem({command: "perspective:duplicate", args: {widget}});
 
         // could move these 3 to perspective widget
-        contextMenu.addItem({command: "perspective:export", selector: ".p-Widget", args: {widget}});
-        contextMenu.addItem({command: "perspective:copy", selector: ".p-Widget", args: {widget}});
-        contextMenu.addItem({command: "perspective:reset", selector: ".p-Widget", args: {widget}});
+        contextMenu.addItem({command: "perspective:export", args: {widget}});
+        contextMenu.addItem({command: "perspective:copy", args: {widget}});
+        contextMenu.addItem({command: "perspective:reset", args: {widget}});
         return contextMenu;
     }
 
     private showMenu(widget: PerspectiveWidget, event: MouseEvent) {
         // create menu in add widget instead??
         const menu = this.createMenu(widget);
-        const menuOpened = menu.open(event);
-        if (menuOpened) {
-            event.preventDefault();
-        }
-
+        menu.open(event.clientX, event.clientY);
+        event.preventDefault();
         event.stopPropagation();
     }
 
@@ -136,9 +136,18 @@ export class PerspectiveDockPanel extends DockPanel {
     }
 
     private addWidgetEventListeners(widget: PerspectiveWidget) {
-        widget.node.addEventListener("contextmenu", (event: MouseEvent) => this.showMenu(widget, event));
-        widget.viewer.addEventListener("perspective-toggle-settings", (event: CustomEvent) => {
+        if (this.listeners.has(widget)) {
+            this.listeners.get(widget)();
+        }
+        const contextmenu = this.showMenu.bind(this, widget);
+        const settings = (event: CustomEvent) => {
             widget.title.className = event.detail && "settings_open";
+        };
+        widget.viewer.addEventListener("contextmenu", contextmenu);
+        widget.viewer.addEventListener("perspective-toggle-settings", settings);
+        this.listeners.set(widget, () => {
+            widget.viewer.removeEventListener("contextmenu", contextmenu);
+            widget.viewer.removeEventListener("perspective-toggle-settings", settings);
         });
     }
 
