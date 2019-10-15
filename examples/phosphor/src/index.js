@@ -32,8 +32,6 @@ window.addEventListener("load", async () => {
     const perspective_viewer_1 = new PerspectiveWidget("One");
     const perspective_viewer_2 = new PerspectiveWidget("Two");
 
-    perspective_viewer_1.dark = true;
-
     workspace.addWidget(perspective_viewer_1);
     workspace.addWidget(perspective_viewer_2, {mode: "split-right", ref: perspective_viewer_1});
 

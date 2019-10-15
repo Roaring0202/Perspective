@@ -57,9 +57,6 @@ export class PerspectiveTabBarRenderer extends TabBar.Renderer {
     }
 
     public renderLoadingIcon() {
-        return h.div(
-            {className: "p-TabBar-tabLoadingIcon"},
-            h.div({className: "spinner spinner--small"}, h.div({className: "spinner__dot1"}), h.div({className: "spinner__dot2"}), h.div({className: "spinner__dot3"}))
-        );
+        return h.div({className: "p-TabBar-tabLoadingIcon"}, h.div({className: "p-TabBar-tabLoadingAnimation"}));
     }
 }

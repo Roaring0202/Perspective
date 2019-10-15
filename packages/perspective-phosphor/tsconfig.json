@@ -13,8 +13,8 @@
         "inlineSourceMap": false,
         "lib": [
             "es2016",
-            "ES2015.Promise",
-            "DOM"
+            "es2015.promise",
+            "dom"
         ],
         "types": [
             "@finos/perspective-viewer"

@@ -8,4 +8,4 @@
  */
 export * from "./widget";
 export * from "./utils";
-export * from "./DockPanel";
+export * from "./dockpanel";

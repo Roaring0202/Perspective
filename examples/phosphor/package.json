@@ -5,7 +5,7 @@
     "description": "An example app built using `@finos/perspective-phosphor`.",
     "scripts": {
         "start": "webpack-dev-server --open",
-        "build": "webpack --colour"
+        "webpack": "webpack --colour"
     },
     "keywords": [],
     "license": "Apache-2.0",
