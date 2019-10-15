@@ -1,10 +1,11 @@
 {
     "name": "phosphor",
     "private": true,
-    "version": "0.3.8",
-    "description": "An example of using the Perspective Webpack plugin to build a JS file with Webpack.",
+    "version": "0.3.9",
+    "description": "An example app built using `@finos/perspective-phosphor`.",
     "scripts": {
-        "start": "webpack-dev-server --open"
+        "start": "webpack-dev-server --open",
+        "build": "webpack --colour"
     },
     "keywords": [],
     "license": "Apache-2.0",

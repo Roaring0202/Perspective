@@ -13,7 +13,7 @@ const CopyPlugin = require("copy-webpack-plugin");
 const path = require("path");
 
 module.exports = {
-    mode: "development",
+    mode: process.env.NODE_ENV || "development",
     entry: "./src/index.js",
     output: {
         filename: "index.js"
@@ -30,6 +30,14 @@ module.exports = {
             {
                 test: /\.less$/,
                 use: [{loader: "style-loader"}, {loader: "css-loader"}, {loader: "less-loader"}]
+            },
+            {
+                test: /\.(png|jpe?g|gif)$/i,
+                use: [
+                    {
+                        loader: "file-loader"
+                    }
+                ]
             }
         ]
     },

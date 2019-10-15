@@ -6,7 +6,6 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-export * from './widget';
-export * from './utils';
-export * from './dockpanel';
-
+export * from "./widget";
+export * from "./utils";
+export * from "./DockPanel";

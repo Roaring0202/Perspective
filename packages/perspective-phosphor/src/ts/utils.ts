@@ -8,14 +8,10 @@
  */
 
 /* defines */
-export
-const MIME_TYPE = 'application/psp+json';
+export const MIME_TYPE = "application/psp+json";
 
-export
-const PSP_CLASS = 'PSPViewer';
+export const PSP_CLASS = "PSPViewer";
 
-export
-const PSP_CONTAINER_CLASS = 'PSPContainer';
+export const PSP_CONTAINER_CLASS = "PSPContainer";
 
-export
-const PSP_CONTAINER_CLASS_DARK = 'PSPContainer-dark';
+export const PSP_CONTAINER_CLASS_DARK = "PSPContainer-dark";

@@ -7,37 +7,37 @@
  *
  */
 
-import {    CommandRegistry  } from '@phosphor/commands';
-  
+import {CommandRegistry} from "@phosphor/commands";
+
 export const createCommands = (dock: any) => {
-  const commands = new CommandRegistry();
-  commands.addCommand('perspective:duplicate', {
-    label: 'Duplicate',
-    mnemonic: 0,
-    iconClass: 'p-MenuItem-duplicate',
-    execute: ({widget}) => dock.duplicate(widget)
-  });
+    const commands = new CommandRegistry();
+    commands.addCommand("perspective:duplicate", {
+        execute: ({widget}) => dock.duplicate(widget),
+        iconClass: "p-MenuItem-duplicate",
+        label: "Duplicate",
+        mnemonic: 0
+    });
 
-  commands.addCommand("perspective:export", {
-    label: "Export CSV",
-    mnemonic: 0,
-    iconClass: "p-MenuItem-export",
-    execute: (args: any) => args.widget.pspNode.download()
-  });
+    commands.addCommand("perspective:export", {
+        execute: (args: any) => args.widget.pspNode.download(),
+        iconClass: "p-MenuItem-export",
+        label: "Export CSV",
+        mnemonic: 0
+    });
 
-  commands.addCommand("perspective:copy", {
-      label: "Copy To Clipboard",
-      mnemonic: 0,
-      iconClass: "p-MenuItem-copy",
-      execute: (args: any) => args.widget.pspNode.copy()
-  });
+    commands.addCommand("perspective:copy", {
+        execute: (args: any) => args.widget.pspNode.copy(),
+        iconClass: "p-MenuItem-copy",
+        label: "Copy To Clipboard",
+        mnemonic: 0
+    });
 
-  commands.addCommand("perspective:reset", {
-      label: "Reset",
-      mnemonic: 0,
-      iconClass: "p-MenuItem-reset",
-      execute: (args: any) => args.widget.pspNode.reset()
-  });
+    commands.addCommand("perspective:reset", {
+        execute: (args: any) => args.widget.pspNode.reset(),
+        iconClass: "p-MenuItem-reset",
+        label: "Reset",
+        mnemonic: 0
+    });
 
-  return commands
-}
+    return commands;
+};
