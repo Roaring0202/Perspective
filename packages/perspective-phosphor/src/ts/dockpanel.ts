@@ -59,6 +59,7 @@ export class PerspectiveDockPanel extends DockPanel {
 
     public duplicate(widget: PerspectiveWidget): void {
         const newWidget = new PerspectiveWidget(widget.name);
+        newWidget.title.closable = true;
         newWidget.restore(widget.save()).then(() => {
             this.addWidget(newWidget, {mode: "split-right", ref: widget});
             newWidget.load(widget.table);
@@ -120,6 +121,18 @@ export class PerspectiveDockPanel extends DockPanel {
     private showMenu(widget: PerspectiveWidget, event: MouseEvent) {
         // create menu in add widget instead??
         const menu = this.createMenu(widget);
+        const tabbar = this.findTabbar(widget);
+
+        widget.node.classList.add("context-focus")
+        tabbar.node.classList.add("context-focus")
+        this.node.classList.add("context-menu-open")
+        
+        menu.aboutToClose.connect(() => {
+            widget.node.classList.remove("context-focus")
+            tabbar.node.classList.remove("context-focus")
+            this.node.classList.remove("context-menu-open")
+        });
+
         menu.open(event.clientX, event.clientY);
         event.preventDefault();
         event.stopPropagation();

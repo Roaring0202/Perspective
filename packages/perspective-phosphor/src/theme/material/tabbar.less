@@ -73,9 +73,6 @@
     content: "[untitled]";
 }
 
-.context-menu-open .p-TabBar-tab {
-    opacity: 0.2;
-}
 
 .divider {
     left: 24px;
@@ -352,3 +349,12 @@
 .p-TabBar-tab.p-mod-drag-image {
     display: none;
 }
+
+.p-DockPanel.context-menu-open > .p-TabBar.context-focus{
+    opacity: 1
+}
+
+.p-DockPanel.context-menu-open > .p-TabBar{
+    opacity: 0.2
+}
+
