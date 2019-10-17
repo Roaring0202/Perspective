@@ -11,7 +11,7 @@
         "outDir": "dist/esm",
         "sourceMap": true,
         "inlineSourceMap": false,
-        "rootDir": "src/ts",
+        "rootDir": "../src/ts",
         "lib": [
             "es2016",
             "es2015.promise",
@@ -22,7 +22,7 @@
         ]
     },
     "include": [
-        "src/ts/*"
+        "../src/ts/*"
     ],
     "exclude": [
         "node_modules",

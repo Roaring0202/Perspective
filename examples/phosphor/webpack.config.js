@@ -9,7 +9,6 @@
 
 const PerspectivePlugin = require("@finos/perspective-webpack-plugin");
 const HtmlWebPackPlugin = require("html-webpack-plugin");
-const CopyPlugin = require("copy-webpack-plugin");
 const path = require("path");
 
 module.exports = {
@@ -22,8 +21,7 @@ module.exports = {
         new HtmlWebPackPlugin({
             title: "Phosphor Example"
         }),
-        new PerspectivePlugin({}),
-        new CopyPlugin([path.join(__dirname, "../simple/superstore.arrow")])
+        new PerspectivePlugin({})
     ],
     module: {
         rules: [
@@ -40,6 +38,9 @@ module.exports = {
                 ]
             }
         ]
+    },
+    devServer: {
+        contentBase: [path.join(__dirname, "dist"), path.join(__dirname, "../simple")]
     },
     devtool: "source-map"
 };

@@ -24,9 +24,9 @@ module.exports = {
         rules: [
             {
                 test: /\.less$/,
-                use: [{loader: "style-loader"}, {loader: "css-loader"}, {loader: "less-loader"}]
+                use: [{loader: "css-loader"}, {loader: "less-loader"}]
             },
-            {test: /\.ts?$/, loader: "ts-loader"}
+            {test: /\.ts?$/, loader: "ts-loader", options: {configFile: "config/tsconfig.json"}}
         ]
     },
     output: {

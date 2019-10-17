@@ -14,6 +14,7 @@ import {createCommands} from "./contextmenu";
 import {PerspectiveTabBar} from "./tabbar";
 import {PerspectiveTabBarRenderer} from "./tabbarrenderer";
 import {PerspectiveWidget} from "./widget";
+import {mapWidgets} from "./utils"
 
 // TODO:
 //  - link/broadcast functionality
@@ -70,13 +71,13 @@ export class PerspectiveDockPanel extends DockPanel {
     }
 
     public deserialize(layout: any): void {
-        const newLayout = this.mapWidgets(this.createWidget, layout);
+        const newLayout = mapWidgets(this.createWidget, layout);
         this.restoreLayout(newLayout);
     }
 
     public serialize() {
         const layout = this.saveLayout();
-        return this.mapWidgets((widget: PerspectiveWidget) => widget.save(), layout);
+        return mapWidgets((widget: PerspectiveWidget) => widget.save(), layout);
     }
 
     /**

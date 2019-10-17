@@ -18,8 +18,9 @@
         "bench:build": "echo \"No Benchmarks\"",
         "bench:run": "echo \"No Benchmarks\"",
         "build": "npm-run-all build:*",
-        "build:esm": "tsc --outDir dist/esm",
-        "build:cjs": "webpack",
+        "build:esm": "tsc --p ./config --outDir dist/esm",
+        "build:cjs": "webpack --config config/webpack.config.js",
+        "build:styles": "webpack --config config/webpack.theme.config.js",
         "clean": "rimraf dist",
         "test": "jest --silent --color 2>&1"
     },
@@ -38,11 +39,13 @@
         "identity-obj-proxy": "^3.0.0",
         "isomorphic-fetch": "^2.2.1",
         "jest-transform-css": "^2.0.0",
+        "mini-css-extract-plugin": "^0.8.0",
         "mutationobserver-shim": "^0.3.3",
         "rimraf": "^2.5.2",
         "source-map-support": "^0.5.9",
         "ts-jest": "^24.1.0",
-        "typescript": "^3.2.4"
+        "typescript": "^3.2.4",
+        "webpack-fix-style-only-entries": "^0.4.0"
     },
     "jest": {
         "preset": "ts-jest",
@@ -54,7 +57,7 @@
         ],
         "globals": {
             "ts-jest": {
-                "tsConfig": "tsconfig.test.json"
+                "tsConfig": "config/tsconfig.test.json"
             }
         }
     }
