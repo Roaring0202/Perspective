@@ -9,17 +9,20 @@ declare module '@finos/perspective-viewer' {
         delete(): Promise<void>;
         flush(): Promise<void>;
         toggleConfig(): void;
-        save(): any;
+        save(): ViewConfig;
+        reset(): void;
         restore(x: any): Promise<void>;
         restyleElement(): void;
+        readonly table?: Table;
     }
 
-    export interface PerspectiveViewerOptions extends ViewConfig {
+    export interface PerspectiveViewerOptions extends Omit<ViewConfig, "row_pivots"|"column_pivots"|"filter" > {
         editable? : boolean;
         plugin? : string;
-        plugin_config?: any;
-        filters? : Array<Array<string>>;
-        computed_columns? : { [column_name:string]: string}[];
+        "computed-columns"? : { [column_name:string]: string}[];
+        "row-pivots"? : string[];
+        "column-pivots"? : string[];
+        filters?: Array<Array<string>>;
     }
     
 
