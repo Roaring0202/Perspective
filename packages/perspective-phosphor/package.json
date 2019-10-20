@@ -45,22 +45,15 @@
         "mutationobserver-shim": "^0.3.3",
         "rimraf": "^2.5.2",
         "source-map-support": "^0.5.9",
-        "ts-jest": "^24.1.0",
         "typescript": "^3.6.0",
         "webpack-fix-style-only-entries": "^0.4.0"
     },
     "jest": {
-        "preset": "ts-jest",
         "transform": {
             ".js$": "@finos/perspective-test/src/js/transform.js"
         },
         "setupFiles": [
             "./test/setup-jest.js"
-        ],
-        "globals": {
-            "ts-jest": {
-                "tsConfig": "config/tsconfig.test.json"
-            }
-        }
+        ]
     }
 }

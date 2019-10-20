@@ -1,6 +1,6 @@
-import {PerspectiveDockPanel} from "../../src/ts/dockpanel";
-import {PerspectiveWidget} from "../../src/ts/widget";
-import {mapWidgets} from "../../src/ts/utils";
+import {PerspectiveDockPanel} from "../../dist/esm/dockpanel";
+import {PerspectiveWidget} from "../../dist/esm/widget";
+import {mapWidgets} from "../../dist/esm/utils";
 
 describe("dockpanel", () => {
     test("serialise returns a correct widget state", () => {
@@ -30,10 +30,10 @@ describe("dockpanel", () => {
             }
         };
 
-        dockpanel.deserialize(config as any);
+        dockpanel.deserialize(config);
 
-        const widgets: PerspectiveWidget[] = [];
-        mapWidgets((widget: PerspectiveWidget) => {
+        const widgets = [];
+        mapWidgets(widget => {
             widgets.push(widget);
         }, dockpanel.saveLayout());
 

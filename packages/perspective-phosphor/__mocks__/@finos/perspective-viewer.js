@@ -8,6 +8,7 @@ class MockPerspectiveViewer extends HTMLElement {
     load(table) {
         this.table = table;
     }
+    restyleElement(){}
 }
 
 window.customElements.define("perspective-viewer", MockPerspectiveViewer);

@@ -13,16 +13,16 @@ export interface PerspectiveWorkspaceOptions {
 
 export class PerspectiveWorkspace {
     private dockpanel: PerspectiveDockPanel;
-    private driver: SplitPanel;
+    private masterpanel: SplitPanel;
     private main: SplitPanel;
     private commands: CommandRegistry;
 
     constructor({container}: PerspectiveWorkspaceOptions = {}) {
         this.dockpanel = new PerspectiveDockPanel("main", {enableContextMenu: false});
-        this.driver = new SplitPanel({orientation: "vertical"});
+        this.masterpanel = new SplitPanel({orientation: "vertical"});
         this.main = new SplitPanel({orientation: "horizontal"});
 
-        this.driver.addClass("p-Master");
+        this.masterpanel.addClass("p-Master");
         this.main.addWidget(this.dockpanel);
         this.commands = this.createCommands();
 
@@ -74,42 +74,41 @@ export class PerspectiveWorkspace {
         }, this.dockpanel.saveLayout());
     }
 
+    private onPerspectiveClick = (event: CustomEvent): void => {
+        this.filterWidget([...event.detail.config.filters]);
+    };
+
     private makeMaster(widget: PerspectiveWidget): void {
-        const table = widget.table;
         widget.close();
+        widget.dark = true;
 
-        const newWidget = this.dockpanel.createWidget(widget.title.label, {dark: true, ...widget.save()});
-        newWidget.title.closable = true;
-
-        if (this.driver.widgets.length === 0) {
+        if (this.masterpanel.widgets.length === 0) {
             this.dockpanel.close();
-            this.main.addWidget(this.driver);
+            this.main.addWidget(this.masterpanel);
             this.main.addWidget(this.dockpanel);
             this.main.setRelativeSizes([1, 3]);
         }
 
-        this.driver.addWidget(newWidget);
-        newWidget.load(table);
-        newWidget.node.addEventListener("perspective-click", (event: CustomEvent) => {
-            this.filterWidget([...event.detail.config.filters]);
-        });
+        this.masterpanel.addWidget(widget);
+        widget.viewer.restyleElement();
+
+        widget.node.addEventListener("perspective-click", this.onPerspectiveClick);
     }
 
     private makeDetail(widget: PerspectiveWidget): void {
-        const table = widget.table;
         widget.close();
+        widget.dark = false;
 
-        const newWidget = new PerspectiveWidget(widget.title.label, widget.save());
-        newWidget.title.closable = true;
+        this.dockpanel.addWidget(widget, {mode: "split-right"});
 
-        this.dockpanel.addWidget(newWidget, {mode: "split-right"});
-        newWidget.load(table);
-
-        if (this.driver.widgets.length === 0) {
+        if (this.masterpanel.widgets.length === 0) {
             this.dockpanel.close();
-            this.driver.close();
+            this.masterpanel.close();
             this.main.addWidget(this.dockpanel);
         }
+
+        widget.viewer.restyleElement();
+        widget.node.removeEventListener("perspective-click", this.onPerspectiveClick);
     }
 
     private toggleMasterDetail(widget: PerspectiveWidget): void {
