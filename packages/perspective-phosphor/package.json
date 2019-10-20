@@ -45,8 +45,8 @@
         "mutationobserver-shim": "^0.3.3",
         "rimraf": "^2.5.2",
         "source-map-support": "^0.5.9",
-        "ts-jest": "^23.10.4",
-        "typescript": "^3.2.4",
+        "ts-jest": "^24.1.0",
+        "typescript": "^3.6.0",
         "webpack-fix-style-only-entries": "^0.4.0"
     },
     "jest": {
