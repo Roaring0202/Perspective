@@ -90,22 +90,7 @@ export class PerspectiveWidget extends Widget {
     /**********************/
     /* Phosphor Overrides */
     /**********************/
-    /**
-     * Phospor: Called when phosphor widget is destroyed
-     *
-     */
-    dispose(): void {
-        super.dispose();
-    }
-
-    /**
-     * Phosphor: onAfterAttach to dom
-     *
-     */
-    onAfterAttach(msg: Message): void {
-        super.onAfterAttach(msg);
-    }
-
+    
     /**
      * Phosphor: after visible
      *
