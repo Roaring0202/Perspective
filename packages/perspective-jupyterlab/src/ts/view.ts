@@ -20,21 +20,20 @@ export class PerspectiveView extends DOMWidgetView {
     client: PerspectiveJupyterClient;
 
     _createElement(tagName: string) {
-        this.pWidget = new PerspectiveJupyterWidget(undefined,
-            {
-             plugin: this.model.get('plugin'),
-             columns: this.model.get('columns'),
-             row_pivots: this.model.get('row_pivots'),
-             column_pivots: this.model.get('column_pivots'),
-             aggregates: this.model.get('aggregates'),
-             sort: this.model.get('sort'),
-             filters: this.model.get('filters'),
-             plugin_config: this.model.get('plugin_config'),
-             computed_columns: [],
-             dark: this.model.get('dark'),
-             editable: this.model.get("editable"),
-             bindto: this.el,
-             view: this,
+        this.pWidget = new PerspectiveJupyterWidget(undefined, {
+            plugin: this.model.get("plugin"),
+            columns: this.model.get("columns"),
+            row_pivots: this.model.get("row_pivots"),
+            column_pivots: this.model.get("column_pivots"),
+            aggregates: this.model.get("aggregates"),
+            sort: this.model.get("sort"),
+            filters: this.model.get("filters"),
+            plugin_config: this.model.get("plugin_config"),
+            computed_columns: [],
+            dark: this.model.get("dark"),
+            editable: this.model.get("editable"),
+            bindto: this.el,
+            view: this
         });
 
         this.client = new PerspectiveJupyterClient(this);
@@ -84,17 +83,17 @@ export class PerspectiveView extends DOMWidgetView {
     render() {
         super.render();
 
-        this.model.on('msg:custom', this._handle_message, this);
-        this.model.on('change:plugin', this.plugin_changed, this);
-        this.model.on('change:columns', this.columns_changed, this);
-        this.model.on('change:row_pivots', this.row_pivots_changed, this);
-        this.model.on('change:column_pivots', this.column_pivots_changed, this);
-        this.model.on('change:aggregates', this.aggregates_changed, this);
-        this.model.on('change:sort', this.sort_changed, this);
-        this.model.on('change:filters', this.filters_changed, this);
-        this.model.on('change:plugin_config', this.plugin_config_changed, this);
-        this.model.on('change:dark', this.dark_changed, this);
-        this.model.on('change:editable', this.editable_changed, this);
+        this.model.on("msg:custom", this._handle_message, this);
+        this.model.on("change:plugin", this.plugin_changed, this);
+        this.model.on("change:columns", this.columns_changed, this);
+        this.model.on("change:row_pivots", this.row_pivots_changed, this);
+        this.model.on("change:column_pivots", this.column_pivots_changed, this);
+        this.model.on("change:aggregates", this.aggregates_changed, this);
+        this.model.on("change:sort", this.sort_changed, this);
+        this.model.on("change:filters", this.filters_changed, this);
+        this.model.on("change:plugin_config", this.plugin_config_changed, this);
+        this.model.on("change:dark", this.dark_changed, this);
+        this.model.on("change:editable", this.editable_changed, this);
 
         // Watch the viewer DOM so that widget state is always synchronized with DOM attributes.
         const observer = new MutationObserver(this._synchronize_state.bind(this));

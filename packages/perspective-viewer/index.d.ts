@@ -17,12 +17,15 @@ declare module '@finos/perspective-viewer' {
     }
 
     export interface PerspectiveViewerOptions extends Omit<ViewConfig, "row_pivots"|"column_pivots"|"filter" > {
+        aggregates?: { [column_name:string]: string};
         editable? : boolean;
         plugin? : string;
+        columns? : string[];
         "computed-columns"? : { [column_name:string]: string}[];
         "row-pivots"? : string[];
         "column-pivots"? : string[];
         filters?: Array<Array<string>>;
+        sort?: string[][];
     }
     
 
