@@ -4,10 +4,10 @@ import {toArray} from "@phosphor/algorithm";
 import {PerspectiveWidget} from "../../dist/esm/widget";
 
 describe("workspace", () => {
-    test("addWidget adds widget to underlying dockpanel", () => {
+    test("addViewer adds widget to underlying dockpanel", () => {
         const workspace = new PerspectiveWorkspace();
         const widget = new PerspectiveWidget("One", {plugin_config: {columns: ["A"]}});
-        workspace.addWidget(widget);
+        workspace.addViewer(widget);
 
         const widgets = toArray(workspace.dockpanel.widgets());
 
@@ -18,7 +18,7 @@ describe("workspace", () => {
     test("makeMaster moves widget from dock to split panel", () => {
         const workspace = new PerspectiveWorkspace();
         const widget = new PerspectiveWidget("One", {plugin_config: {columns: ["A"]}});
-        workspace.addWidget(widget);
+        workspace.addViewer(widget);
 
         let widgets = toArray(workspace.dockpanel.widgets());
         expect(widgets.length).toBe(1);
@@ -39,7 +39,7 @@ describe("workspace", () => {
     test("makeDetail moves widget from split to dock panel", () => {
         const workspace = new PerspectiveWorkspace();
         const widget = new PerspectiveWidget("One", {plugin_config: {columns: ["A"]}});
-        workspace.addWidget(widget);
+        workspace.addViewer(widget);
 
         let widgets = toArray(workspace.dockpanel.widgets());
         expect(widgets.length).toBe(1);
@@ -66,7 +66,7 @@ describe("workspace", () => {
     test("`perspective-click` event handlers are registered on masterpanel widgets", () => {
         const workspace = new PerspectiveWorkspace();
         const widget = new PerspectiveWidget("One", {plugin_config: {columns: ["A"]}});
-        workspace.addWidget(widget);
+        workspace.addViewer(widget);
 
         workspace.onPerspectiveClick = jest.fn();
 
@@ -81,7 +81,7 @@ describe("workspace", () => {
     test("`perspective-click` event handlers are unregistered when widget is moved to detailpanel", () => {
         const workspace = new PerspectiveWorkspace();
         const widget = new PerspectiveWidget("One", {plugin_config: {columns: ["A"]}});
-        workspace.addWidget(widget);
+        workspace.addViewer(widget);
 
         workspace.onPerspectiveClick = jest.fn();
 
@@ -107,8 +107,8 @@ describe("workspace", () => {
 
         detailWidget.viewer.table = mockTable;
 
-        workspace.addWidget(detailWidget);
-        workspace.addWidget(masterWidget);
+        workspace.addViewer(detailWidget);
+        workspace.addViewer(masterWidget);
 
         workspace.makeMaster(masterWidget);
         const config = {filters: [["A", "===", "testValue"]]};
@@ -130,8 +130,8 @@ describe("workspace", () => {
 
         detailWidget.viewer.table = mockTable;
 
-        workspace.addWidget(detailWidget);
-        workspace.addWidget(masterWidget);
+        workspace.addViewer(detailWidget);
+        workspace.addViewer(masterWidget);
 
         workspace.makeMaster(masterWidget);
         const config = {filters: [["B", "===", "testValue"]]};

@@ -1,4 +1,4 @@
-import {SplitPanel, Widget, DockLayout} from "@phosphor/widgets";
+import {SplitPanel, DockLayout} from "@phosphor/widgets";
 import {PerspectiveDockPanel, ContextMenuArgs} from "./dockpanel";
 import {PerspectiveWidget} from "./widget";
 import {mapWidgets} from "./utils";
@@ -8,44 +8,38 @@ import {createCommands} from "./contextmenu";
 import {CommandRegistry} from "@phosphor/commands";
 
 export interface PerspectiveWorkspaceOptions {
-    container?: HTMLElement;
+    node?: HTMLElement;
 }
 
-export class PerspectiveWorkspace {
+export class PerspectiveWorkspace extends SplitPanel {
     private dockpanel: PerspectiveDockPanel;
     private masterpanel: SplitPanel;
-    private main: SplitPanel;
     private commands: CommandRegistry;
 
-    constructor({container}: PerspectiveWorkspaceOptions = {}) {
+    constructor({}: PerspectiveWorkspaceOptions = {}) {
+        super({orientation: "horizontal"});
         this.dockpanel = new PerspectiveDockPanel("main", {enableContextMenu: false});
         this.masterpanel = new SplitPanel({orientation: "vertical"});
-        this.main = new SplitPanel({orientation: "horizontal"});
 
         this.masterpanel.addClass("p-Master");
-        this.main.addWidget(this.dockpanel);
+        this.addWidget(this.dockpanel);
         this.commands = this.createCommands();
-
+        // this.node.appendChild(this.dockpanel.node);
+        // this.node.setAttribute("style", `position: absolute;top:0;left:0;right:0;bottom:0`);
         this.dockpanel.onContextMenu.connect(this.showContextMenu.bind(this));
-
-        Widget.attach(this.main, container || document.body);
     }
 
-    addWidget(widget: PerspectiveWidget, options: DockLayout.IAddOptions): void {
+    addViewer(widget: PerspectiveWidget, options: DockLayout.IAddOptions): void {
         this.dockpanel.addWidget(widget, options);
-    }
-
-    update(): void {
-        this.main.update();
     }
 
     private createContextMenu(widget: any): Menu {
         const contextMenu = new Menu({commands: this.commands});
 
-        contextMenu.addItem({command: "workspace:broadcast", args: {widget}});
         if (widget.parent === this.dockpanel) {
             contextMenu.addItem({command: "perspective:duplicate", args: {widget}});
         }
+        contextMenu.addItem({command: "workspace:master", args: {widget}});
 
         contextMenu.addItem({command: "perspective:export", args: {widget}});
         contextMenu.addItem({command: "perspective:copy", args: {widget}});
@@ -84,9 +78,9 @@ export class PerspectiveWorkspace {
 
         if (this.masterpanel.widgets.length === 0) {
             this.dockpanel.close();
-            this.main.addWidget(this.masterpanel);
-            this.main.addWidget(this.dockpanel);
-            this.main.setRelativeSizes([1, 3]);
+            this.addWidget(this.masterpanel);
+            this.addWidget(this.dockpanel);
+            this.setRelativeSizes([1, 3]);
         }
 
         this.masterpanel.addWidget(widget);
@@ -104,7 +98,7 @@ export class PerspectiveWorkspace {
         if (this.masterpanel.widgets.length === 0) {
             this.dockpanel.close();
             this.masterpanel.close();
-            this.main.addWidget(this.dockpanel);
+            this.addWidget(this.dockpanel);
         }
 
         widget.viewer.restyleElement();
@@ -121,7 +115,7 @@ export class PerspectiveWorkspace {
 
     private createCommands(): CommandRegistry {
         const commands = createCommands(this.dockpanel) as CommandRegistry;
-        commands.addCommand("workspace:broadcast", {
+        commands.addCommand("workspace:master", {
             execute: args => this.toggleMasterDetail((args as any).widget),
             iconClass: args => ((args as any).widget.parent === this.dockpanel ? "p-MenuItem-master" : "p-MenuItem-detail"),
             label: args => ((args as any).widget.parent === this.dockpanel ? "Master" : "Detail"),
