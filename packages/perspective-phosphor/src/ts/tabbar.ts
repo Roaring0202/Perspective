@@ -45,7 +45,7 @@ export class PerspectiveTabBar extends TabBar<Widget> {
         switch (event.type) {
             case "mousedown":
                 if ((event.target as HTMLElement).id !== TabBarActions.Maximize) {
-                    return;
+                    break;
                 }
                 const tabs = this.contentNode.children;
 

@@ -1,4 +1,4 @@
-import {SplitPanel, Widget, DockLayout} from "@phosphor/widgets";
+import {SplitPanel, DockLayout} from "@phosphor/widgets";
 import {PerspectiveDockPanel, ContextMenuArgs} from "./dockpanel";
 import {PerspectiveWidget} from "./widget";
 import {mapWidgets} from "./utils";
@@ -8,35 +8,31 @@ import {createCommands} from "./contextmenu";
 import {CommandRegistry} from "@phosphor/commands";
 
 export interface PerspectiveWorkspaceOptions {
-    container?: HTMLElement;
+    node?: HTMLElement;
 }
 
-export class PerspectiveWorkspace {
+export class PerspectiveWorkspace extends SplitPanel {
     private dockpanel: PerspectiveDockPanel;
     private driver: SplitPanel;
-    private main: SplitPanel;
+    // private main: SplitPanel;
     private commands: CommandRegistry;
 
-    constructor({container}: PerspectiveWorkspaceOptions = {}) {
+    constructor({}: PerspectiveWorkspaceOptions = {}) {
+        super({orientation: "horizontal"});
         this.dockpanel = new PerspectiveDockPanel("main", {enableContextMenu: false});
         this.driver = new SplitPanel({orientation: "vertical"});
-        this.main = new SplitPanel({orientation: "horizontal"});
+        //this.main = new SplitPanel({orientation: "horizontal"});
 
         this.driver.addClass("p-Master");
-        this.main.addWidget(this.dockpanel);
+        this.addWidget(this.dockpanel);
         this.commands = this.createCommands();
-
+        // this.node.appendChild(this.dockpanel.node);
+        // this.node.setAttribute("style", `position: absolute;top:0;left:0;right:0;bottom:0`);
         this.dockpanel.onContextMenu.connect(this.showContextMenu.bind(this));
-
-        Widget.attach(this.main, container || document.body);
     }
 
-    addWidget(widget: PerspectiveWidget, options: DockLayout.IAddOptions): void {
+    addViewer(widget: PerspectiveWidget, options: DockLayout.IAddOptions): void {
         this.dockpanel.addWidget(widget, options);
-    }
-
-    update(): void {
-        this.main.update();
     }
 
     private createContextMenu(widget: any): Menu {
@@ -83,9 +79,9 @@ export class PerspectiveWorkspace {
 
         if (this.driver.widgets.length === 0) {
             this.dockpanel.close();
-            this.main.addWidget(this.driver);
-            this.main.addWidget(this.dockpanel);
-            this.main.setRelativeSizes([1, 3]);
+            this.addWidget(this.driver);
+            this.addWidget(this.dockpanel);
+            this.setRelativeSizes([1, 3]);
         }
 
         this.driver.addWidget(newWidget);
@@ -108,7 +104,7 @@ export class PerspectiveWorkspace {
         if (this.driver.widgets.length === 0) {
             this.dockpanel.close();
             this.driver.close();
-            this.main.addWidget(this.dockpanel);
+            this.addWidget(this.dockpanel);
         }
     }
 

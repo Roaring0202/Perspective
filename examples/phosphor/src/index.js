@@ -9,6 +9,7 @@
 
 import perspective from "@finos/perspective";
 import {PerspectiveWorkspace, PerspectiveWidget} from "@finos/perspective-phosphor";
+import {Widget} from "@phosphor/widgets";
 import "@finos/perspective-phosphor/src/theme/material/index.less";
 
 import "@finos/perspective-viewer-hypergrid";
@@ -30,18 +31,20 @@ window.addEventListener("load", async () => {
         "row-pivots": ["Sub-Category"],
         columns: ["Profit", "Sales"]
     });
+
     const widget2 = new PerspectiveWidget("Two", {
         plugin: "d3_x_bar",
         "row-pivots": ["Region"],
         columns: ["Region"]
     });
+
     const widget3 = new PerspectiveWidget("Three");
     const widget4 = new PerspectiveWidget("Four");
 
-    workspace.addWidget(widget1);
-    workspace.addWidget(widget2, {mode: "split-bottom", ref: widget1});
-    workspace.addWidget(widget3, {mode: "split-right", ref: widget1});
-    workspace.addWidget(widget4, {mode: "split-right", ref: widget2});
+    workspace.addViewer(widget1);
+    workspace.addViewer(widget2, {mode: "split-bottom", ref: widget1});
+    workspace.addViewer(widget3, {mode: "split-right", ref: widget1});
+    workspace.addViewer(widget4, {mode: "split-right", ref: widget2});
 
     widget1.load(table);
     widget2.load(table);
@@ -51,5 +54,8 @@ window.addEventListener("load", async () => {
     window.onresize = () => {
         workspace.update();
     };
+
     window.workspace = workspace;
+
+    Widget.attach(workspace, document.body);
 });
