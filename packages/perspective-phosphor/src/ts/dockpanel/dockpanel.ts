@@ -72,7 +72,6 @@ export class PerspectiveDockPanel extends DockPanel {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this as any)._renderer.dock = this;
         this.commands = createCommands(this);
-        this.addTabbarEventListeners();
         this.listeners = new WeakMap();
         this.enableContextMenu = options.enableContextMenu;
         this._onContextMenu = new Signal(this);
@@ -81,14 +80,13 @@ export class PerspectiveDockPanel extends DockPanel {
         }
         if (options.node) {
             Widget.attach(this, options.node);
-        } else {
         }
     }
 
-    public addWidget(widget: PerspectiveWidget, options: DockPanel.IAddOptions = {}): void {
-        this.addWidgetEventListeners(widget);
-        super.addWidget(widget, options);
-    }
+    // public duplicate(widget: PerspectiveWidget): void {
+    //     const newWidget = widget.duplicate();
+    //     this.addWidget(newWidget, {mode: "split-right", ref: widget});
+    // }
 
     public restore(layout: SerilizableILayoutConfig): void {
         const newLayout = PerspectiveDockPanel.mapWidgets((config: PerspectiveWidgetOptions) => this.createWidget(config.title, config), layout);
@@ -165,11 +163,8 @@ export class PerspectiveDockPanel extends DockPanel {
         return this._onContextMenu;
     }
 
-    private addTabbarEventListeners(): void {
+    private addTabbarEventListeners(tabBar: PerspectiveTabBar): void {
         this.node.addEventListener("contextmenu", event => {
-            const tabBar = find(this.tabBars(), bar => {
-                return bar.node.contains(event.target as Node);
-            });
             const widget = tabBar.titles[0].owner as PerspectiveWidget;
             this._onContextMenu.emit({widget, event});
             event.preventDefault();
@@ -195,7 +190,6 @@ export class PerspectiveDockPanel extends DockPanel {
 
     public createWidget = (title: string, config: PerspectiveWidgetOptions): PerspectiveWidget => {
         const widget = new PerspectiveWidget(title, config);
-        this.addWidgetEventListeners(widget);
         return widget;
     };
 
@@ -212,5 +206,14 @@ export class PerspectiveDockPanel extends DockPanel {
 
     onAfterAttach(): void {
         this.spacing = parseInt(window.getComputedStyle(this.node).padding) || 0;
+    }
+
+    protected onChildAdded(msg: Widget.ChildMessage): void {
+        super.onChildAdded(msg);
+        if (msg.child instanceof PerspectiveTabBar) {
+            this.addTabbarEventListeners(msg.child);
+        } else if (msg.child instanceof PerspectiveWidget) {
+            this.addWidgetEventListeners(msg.child);
+        }
     }
 }

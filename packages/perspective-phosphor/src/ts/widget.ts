@@ -25,6 +25,7 @@ export interface PerspectiveWidgetOptions extends PerspectiveViewerOptions {
     title?: string;
     bindto?: HTMLElement;
     plugin_config?: PerspectiveViewerOptions;
+    createNode?: any;
 
     // these shouldn't exist, PerspectiveViewerOptions should be sufficient e.g.
     // ["row-pivots"]
@@ -40,9 +41,11 @@ export interface PerspectiveWidgetOptions extends PerspectiveViewerOptions {
  */
 export class PerspectiveWidget extends Widget {
     constructor(name = "Perspective", options: PerspectiveWidgetOptions = {}) {
-        super({node: options.bindto || document.createElement("div")});
-        this._viewer = PerspectiveWidget.createNode(this.node as HTMLDivElement);
+        const createNode = options.createNode || PerspectiveWidget.createNode;
+        const {node, viewer} = createNode(options.bindto);
+        super({node: node});
 
+        this._viewer = viewer;
         this.title.label = name;
         this.title.caption = `${name}`;
         this.id = `${name}-` + _increment;
@@ -358,34 +361,35 @@ export class PerspectiveWidget extends Widget {
         this._viewer.toggleConfig();
     }
 
-    static createNode(node: HTMLDivElement): PerspectiveViewer {
-        node.classList.add("p-Widget");
-        node.classList.add(PSP_CONTAINER_CLASS);
+    duplicate(): PerspectiveWidget {
+        const widget = new PerspectiveWidget(this.name);
+        widget.restore(this.save());
+        widget.load(this.table);
+        return widget;
+    }
+
+    static createNode(node?: HTMLElement): {} {
         const viewer = document.createElement("perspective-viewer") as PerspectiveViewer;
         viewer.classList.add(PSP_CLASS);
         viewer.setAttribute("type", MIME_TYPE);
 
-        while (node.lastChild) {
-            node.removeChild(node.lastChild);
-        }
+        if (node) {
+            node.classList.add("p-Widget");
+            node.classList.add(PSP_CONTAINER_CLASS);
 
-        node.appendChild(viewer);
+            while (node.lastChild) {
+                node.removeChild(node.lastChild);
+            }
+
+            node.appendChild(viewer);
+        } else {
+            viewer.classList.add("p-Widget");
+            viewer.classList.add(PSP_CONTAINER_CLASS);
+        }
 
         // allow perspective's event handlers to do their work
         viewer.addEventListener("contextmenu", event => event.stopPropagation(), false);
-
-        const div = document.createElement("div");
-        div.style.setProperty("display", "flex");
-        div.style.setProperty("flex-direction", "row");
-        node.appendChild(div);
-
-        if (!viewer.notifyResize) {
-            console.warn("Warning: not bound to real element");
-        } else {
-            const resize_observer = new MutationObserver(() => viewer.notifyResize.call(viewer));
-            resize_observer.observe(node, {attributes: true});
-        }
-        return viewer;
+        return {viewer, node: node || viewer};
     }
 
     private _viewer: PerspectiveViewer;

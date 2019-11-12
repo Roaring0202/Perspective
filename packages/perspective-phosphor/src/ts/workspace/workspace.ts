@@ -152,11 +152,8 @@ export class PerspectiveWorkspace extends SplitPanel {
         if (this.dockpanel.mode === "single-document") {
             this.toggleSingleDocument(widget);
         }
-        const newWidget = new PerspectiveWidget(widget.name);
-        newWidget.title.closable = true;
-        await newWidget.restore(widget.save());
-        this.dockpanel.addWidget(newWidget, {mode: "split-right", ref: widget});
-        newWidget.load(widget.table);
+        const duplicate = widget.duplicate();
+        this.dockpanel.addWidget(duplicate, {mode: "split-right", ref: widget});
     }
 
     private createCommands(): CommandRegistry {
