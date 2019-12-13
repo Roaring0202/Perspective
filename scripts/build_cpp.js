@@ -7,29 +7,39 @@
  *
  */
 
-const execSync = require("child_process").execSync;
-
-const execute = cmd => execSync(cmd, {stdio: "inherit"});
-
-function docker(image = "emsdk") {
-    console.log(`-- Creating ${image} docker image`);
-    let cmd = "docker run --rm -it";
-    if (process.env.PSP_CPU_COUNT) {
-        cmd += ` --cpus="${parseInt(process.env.PSP_CPU_COUNT)}.0"`;
-    }
-    if (process.env.PSP_DEBUG) {
-        cmd += ` -e PSP_DEBUG=1`;
-    }
-    cmd += ` -v $(pwd):/usr/src/app/cpp -w /usr/src/app/cpp/cpp/perspective/cppbuild perspective/${image}`;
-    return cmd;
-}
+const {getarg, execute, docker} = require("./script_utils.js");
 
 let flags = " -DPSP_WASM_BUILD=OFF -DPSP_CPP_BUILD=ON -DPSP_CPP_BUILD_TESTS=ON -DPSP_CPP_BUILD_STRICT=OFF";
 
 try {
-    execute("mkdir -p cpp/perspective/cppbuild");
+    execute`mkdir -p cpp/perspective/cppbuild`;
 
     let cmd;
+
+    if (getarg("--ci")) {
+        // Install dependencies
+        execute`
+            export CUR_DIR=\`pwd\`;
+            wget "https://github.com/google/flatbuffers/archive/v1.11.0.tar.gz" -O /tmp/flatbuffers.tar.gz;
+            cd /tmp;
+            tar xfa /tmp/flatbuffers.tar.gz;
+            cd flatbuffers-1.11.0;
+            mkdir build;
+            cd build;
+            cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DFLATBUFFERS_BUILD_SHAREDLIB=ON;
+            sudo make install;
+            sudo cp flatc /usr/bin;
+            sudo rm -rf /tmp/flatbuffers.tar.gz /tmp/flatbuffers-1.11.0;
+            wget "https://cmake.org/files/v3.15/cmake-3.15.5-Linux-x86_64.tar.gz" -O /tmp/cmake.tar.gz;
+            cd /tmp;
+            tar xfz cmake.tar.gz;
+            sudo cp -r cmake-3.15.5-Linux-x86_64/* /usr;
+            sudo rm -rf /usr/local/cmake-3.12.4 /tmp/cmake.tar.gz;
+            /tmp/cmake-3.15.5-Linux-x86_64;
+            cd $CUR_DIR;
+            export CXX="g++-4.9" CC="gcc-4.9";
+        `;
+    }
 
     if (process.env.PSP_DOCKER) {
         cmd = " ";
