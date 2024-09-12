@@ -134,7 +134,7 @@ namespace numpy {
 
         // Use name index instead of column index - prevents off-by-one errors with the "index" column.
         auto name_it = std::find(m_names.begin(), m_names.end(), name); 
-        
+
         // If the column name is not in the dataset, return and move on.
         if (name_it == m_names.end()) {
             return;
