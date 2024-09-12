@@ -14,7 +14,7 @@ const TREE_COLUMN_INDEX = require("fin-hypergrid/src/behaviors/Behavior").protot
 function page2hypergrid(data, row_pivots, columns) {
     const data_columns = Object.keys(data);
     const firstcol = data_columns.length > 0 ? data_columns[0] : undefined;
-    if (columns.length === 0 || data[firstcol].length === 0) {
+    if (columns.length === 0) {
         return [];
     }
 
@@ -46,6 +46,10 @@ function page2hypergrid(data, row_pivots, columns) {
                 rowPath: ["ROOT"].concat(data["__ROW_PATH__"][ridx]),
                 isLeaf: data["__ROW_PATH__"][ridx].length >= row_pivots.length
             };
+        }
+
+        if (data.__INDEX__) {
+            dataRow["__INDEX__"] = data["__INDEX__"][ridx][0];
         }
 
         rows.push(dataRow);

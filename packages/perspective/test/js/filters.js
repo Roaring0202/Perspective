@@ -125,9 +125,9 @@ module.exports = perspective => {
 
                 it("w > date as string", async function() {
                     var table = perspective.table(schema);
-                    table.update(date_range_data);
+                    table.update(date_results);
                     var view = table.view({
-                        filter: [["w", ">", "10/01/2018"]]
+                        filter: [["w", ">", "10/02/2018"]]
                     });
                     let json = await view.to_json();
                     expect(json).toEqual(date_results.slice(2, 4));
@@ -137,12 +137,12 @@ module.exports = perspective => {
 
                 it("w < date as string", async function() {
                     var table = perspective.table(schema);
-                    table.update(date_range_data);
+                    table.update(date_results);
                     var view = table.view({
-                        filter: [["w", "<", "10/01/2018"]]
+                        filter: [["w", "<", "10/02/2018"]]
                     });
                     let json = await view.to_json();
-                    expect(json).toEqual([date_results[0]]);
+                    expect(json).toEqual(date_results.slice(0, 2));
                     view.delete();
                     table.delete();
                 });
@@ -290,14 +290,53 @@ module.exports = perspective => {
                 table.delete();
             });
 
-            it("y contains 'a' | y contains 'b'", async function() {
+            it("y contains 'a' OR y contains 'b'", async function() {
                 var table = perspective.table(data);
+                // when `filter_op` is provided, perspective returns data differently. In this case, returned data should satisfy either/or of the filter conditions.
                 var view = table.view({
-                    filter_op: "|",
+                    filter_op: "or",
                     filter: [["y", "contains", "a"], ["y", "contains", "b"]]
                 });
                 let json = await view.to_json();
                 expect(json).toEqual(rdata.slice(0, 2));
+                view.delete();
+                table.delete();
+            });
+        });
+
+        describe("is null", function() {
+            it("returns the correct null cells for string column", async function() {
+                const table = perspective.table([{x: 1, y: null}, {x: 2, y: null}, {x: 3, y: "x"}, {x: 4, y: "x"}, {x: 1, y: "y"}, {x: 2, y: "x"}, {x: 3, y: "y"}]);
+                const view = table.view({
+                    filter: [["y", "is null"]]
+                });
+                const answer = [{x: 1, y: null}, {x: 2, y: null}];
+                const result = await view.to_json();
+                expect(result).toEqual(answer);
+                view.delete();
+                table.delete();
+            });
+
+            it("returns the correct null cells for integer column", async function() {
+                const table = perspective.table([{x: 1, y: null}, {x: 2, y: null}, {x: 3, y: 1}, {x: 4, y: 2}, {x: 1, y: 3}, {x: 2, y: 4}, {x: 3, y: 5}]);
+                const view = table.view({
+                    filter: [["y", "is null"]]
+                });
+                const answer = [{x: 1, y: null}, {x: 2, y: null}];
+                const result = await view.to_json();
+                expect(result).toEqual(answer);
+                view.delete();
+                table.delete();
+            });
+
+            it("returns the correct null cells for datetime column", async function() {
+                const table = perspective.table([{x: 1, y: null}, {x: 2, y: null}, {x: 3, y: "1/1/2019"}, {x: 4, y: "1/1/2019"}, {x: 1, y: "1/1/2019"}, {x: 2, y: "1/1/2019"}, {x: 3, y: "1/1/2019"}]);
+                const view = table.view({
+                    filter: [["y", "is null"]]
+                });
+                const answer = [{x: 1, y: null}, {x: 2, y: null}];
+                const result = await view.to_json();
+                expect(result).toEqual(answer);
                 view.delete();
                 table.delete();
             });
@@ -341,7 +380,7 @@ module.exports = perspective => {
                 table.delete();
             });
 
-            it("x > null", async function() {
+            it("x > null should be an invalid filter", async function() {
                 var table = perspective.table({x: "float", y: "integer"});
                 const dataSet = [{x: 3.5, y: 1}, {x: 2.5, y: 1}, {x: null, y: 1}, {x: null, y: 1}, {x: 4.5, y: 2}, {x: null, y: 2}];
                 table.update(dataSet);
@@ -358,25 +397,25 @@ module.exports = perspective => {
 
         describe("is_valid_filter", function() {
             it("x == 2", async function() {
-                var table = perspective.table(data);
+                let table = perspective.table(data);
                 let isValid = await table.is_valid_filter(["x", "==", 2]);
                 expect(isValid).toBeTruthy();
                 table.delete();
             });
             it("x < null", async function() {
-                var table = perspective.table(data);
+                let table = perspective.table(data);
                 let isValid = await table.is_valid_filter(["x", "<", null]);
                 expect(isValid).toBeFalsy();
                 table.delete();
             });
             it("x > undefined", async function() {
-                var table = perspective.table(data);
+                let table = perspective.table(data);
                 let isValid = await table.is_valid_filter(["x", ">", undefined]);
                 expect(isValid).toBeFalsy();
                 table.delete();
             });
             it('x == ""', async function() {
-                var table = perspective.table(data);
+                let table = perspective.table(data);
                 let isValid = await table.is_valid_filter(["x", "==", ""]);
                 expect(isValid).toBeTruthy();
                 table.delete();
@@ -386,7 +425,7 @@ module.exports = perspective => {
                     x: "string",
                     y: "date"
                 };
-                var table = perspective.table(schema);
+                let table = perspective.table(schema);
                 let isValid = await table.is_valid_filter(["y", "==", "01-01-1970"]);
                 expect(isValid).toBeTruthy();
                 table.delete();
@@ -396,7 +435,7 @@ module.exports = perspective => {
                     x: "string",
                     y: "date"
                 };
-                var table = perspective.table(schema);
+                let table = perspective.table(schema);
                 let isValid = await table.is_valid_filter(["y", "<", "1234"]);
                 expect(isValid).toBeFalsy();
                 table.delete();
@@ -406,7 +445,7 @@ module.exports = perspective => {
                     x: "string",
                     y: "datetime"
                 };
-                var table = perspective.table(schema);
+                let table = perspective.table(schema);
                 let isValid = await table.is_valid_filter(["y", "==", "11:11:11.111"]);
                 expect(isValid).toBeTruthy();
                 table.delete();
@@ -416,7 +455,7 @@ module.exports = perspective => {
                     x: "string",
                     y: "datetime"
                 };
-                var table = perspective.table(schema);
+                let table = perspective.table(schema);
                 let isValid = await table.is_valid_filter(["y", ">", "11:11:11:111"]);
                 expect(isValid).toBeFalsy();
                 table.delete();

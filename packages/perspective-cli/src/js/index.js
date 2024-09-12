@@ -7,7 +7,7 @@
  *
  */
 
-const {WebSocketHost, table} = require("@finos/perspective/build/perspective.node.js");
+const {WebSocketServer, table} = require("@finos/perspective");
 const {read_stdin, open_browser} = require("./utils.js");
 const fs = require("fs");
 const path = require("path");
@@ -44,9 +44,9 @@ async function convert(filename, options) {
     }
     if (options.format === "arrow") {
         if (options.output) {
-            fs.writeFileSync(options.output, new Buffer(out), "binary");
+            fs.writeFileSync(options.output, Buffer.from(out), "binary");
         } else {
-            console.log(new Buffer(out).toString());
+            console.log(Buffer.from(out).toString());
         }
     } else {
         if (options.output) {
@@ -70,14 +70,14 @@ async function host(filename, options) {
     if (options.assets) {
         files = [options.assets, ...files];
     }
-    const server = new WebSocketHost({assets: files, port: options.port});
+    const server = new WebSocketServer({assets: files, port: options.port});
     let file;
     if (filename) {
-        file = fs.readFileSync(filename).toString();
+        file = table(fs.readFileSync(filename).toString());
     } else {
         file = await read_stdin();
     }
-    server.host_table("data_source_one", table(file));
+    server.host_table("data_source_one", file);
     if (options.open) {
         open_browser(options.port);
     }

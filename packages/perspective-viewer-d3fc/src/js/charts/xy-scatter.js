@@ -64,7 +64,7 @@ function xyScatter(container, settings) {
     const chart = chartCanvasFactory(xAxis, yAxis)
         .xLabel(settings.mainValues[0].name)
         .yLabel(settings.mainValues[1].name)
-        .plotArea(withGridLines(series).canvas(true));
+        .plotArea(withGridLines(series, settings).canvas(true));
 
     chart.xNice && chart.xNice();
     chart.yNice && chart.yNice();
@@ -95,12 +95,14 @@ function xyScatter(container, settings) {
 xyScatter.plugin = {
     type: "d3_xy_scatter",
     name: "X/Y Scatter Chart",
-    max_size: 25000,
+    max_cells: 50000,
+    max_columns: 50,
     initial: {
         type: "number",
         count: 2,
         names: ["X Axis", "Y Axis", "Color", "Size"]
-    }
+    },
+    selectMode: "toggle"
 };
 
 export default xyScatter;

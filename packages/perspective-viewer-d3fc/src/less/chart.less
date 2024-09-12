@@ -19,8 +19,26 @@
         padding: 15px;
         overflow: hidden;
 
+        &.d3_heatmap,
+        &.d3_treemap {
+            d3fc-group.cartesian-chart {
+                grid-template-columns: minmax(0em, max-content) auto 1fr auto minmax(
+                        0em,
+                        max-content
+                    );
+                grid-template-rows: minmax(0em, max-content) auto 1fr auto minmax(
+                        0em,
+                        max-content
+                    );
+            }
+        }
+
+        .chart-label {
+            display: none;
+        }
+
         &.d3_heatmap {
-            padding-right: 105px;
+            padding-right: 120px;
         }
 
         &.d3_sunburst {
@@ -64,8 +82,7 @@
         }
 
         &.d3_treemap {
-            padding: 0;
-            padding-right: 105px;
+            padding-right: 120px;
 
             & .treemap-container {
                 position: relative;
@@ -90,7 +107,10 @@
                 }
 
                 & .treerect {
-                    stroke: var(--d3fc-axis--lines, white);
+                    stroke: var(
+                        --d3fc-treedata-axis--lines,
+                        var(--d3fc-axis--lines, white)
+                    );
                     fill: var(--d3fc-series, rgba(31, 119, 180, 0.5));
                     &:hover {
                         cursor: pointer;
@@ -214,11 +234,11 @@
         }
 
         & .y-label-container .splitter-label::after {
-            content: "\1f847"
+            content: "\1f847";
         }
 
         & .y2-label-container .splitter-label::after {
-            content: "\1f845"
+            content: "\1f845";
         }
 
         &.d3_y_bar .y-axis path,
@@ -309,7 +329,7 @@
         &[borderbox-on-hover="true"] {
             transition: box-shadow 1s;
             &:hover {
-                box-shadow: 2px 2px 6px #000;
+                box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
                 transition: box-shadow 0.2s;
             }
         }

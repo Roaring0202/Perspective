@@ -16,6 +16,8 @@ const partial_missing_rows_arrow = fs.readFileSync(path.join(__dirname, "..", "a
 
 var data = [{x: 1, y: "a", z: true}, {x: 2, y: "b", z: false}, {x: 3, y: "c", z: true}, {x: 4, y: "d", z: false}];
 
+let computed_data = [{x: 1, y: 2}, {x: 2, y: 4}, {x: 3, y: 6}, {x: 4, y: 8}];
+
 var col_data = {
     x: [1, 2, 3, 4],
     y: ["a", "b", "c", "d"],
@@ -293,7 +295,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(data);
         });
@@ -313,7 +315,7 @@ module.exports = perspective => {
                         done();
                     }
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(data);
         });
@@ -334,7 +336,7 @@ module.exports = perspective => {
                     table2.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table1.update(data);
         });
@@ -358,7 +360,7 @@ module.exports = perspective => {
                     table2.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table1.update(data);
         });
@@ -385,6 +387,16 @@ module.exports = perspective => {
                     .concat(data.slice(3, 4))
                     .concat(data.slice(0, 1))
             );
+            view.delete();
+            table.delete();
+        });
+
+        it("{limit: 1} with arrow update", async function() {
+            var table = perspective.table(arrow.slice(), {limit: 1});
+            table.update(arrow.slice());
+            var view = table.view();
+            let result = await view.to_json();
+            expect(result).toEqual([arrow_result[arrow_result.length - 1]]);
             view.delete();
             table.delete();
         });
@@ -433,7 +445,7 @@ module.exports = perspective => {
             var table = perspective.table(arrow.slice(), {index: "dict"});
             var view = table.view();
             let result = await view.to_json();
-            expect(arrow_indexed_result).toEqual(result);
+            expect(result).toEqual(arrow_indexed_result);
             view.delete();
             table.delete();
         });
@@ -474,7 +486,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(data_2);
         });
@@ -492,7 +504,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(data_2);
         });
@@ -536,7 +548,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(partial);
         });
@@ -561,7 +573,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(partial);
         });
@@ -585,7 +597,7 @@ module.exports = perspective => {
                     table.delete();
                     done();
                 },
-                {mode: "rows"}
+                {mode: "cell"}
             );
             table.update(partial);
         });
@@ -616,37 +628,33 @@ module.exports = perspective => {
             table.delete();
         });
 
-        it("partial update with null unsets value", function(done) {
+        it("partial update with null unsets value", async function() {
             var partial = [{x: null, y: "a", z: false}];
             var expected = [{x: null, y: "a", z: false}, {x: 2, y: "b", z: false}, {x: 3, y: "c", z: true}, {x: 4, y: "d", z: false}];
             var table = perspective.table(meta, {index: "y"});
             var view = table.view();
             table.update(data);
             table.update(partial);
-            view.to_json().then(json => {
-                expect(json).toEqual(expected);
-                view.delete();
-                table.delete();
-                done();
-            });
+            const json = await view.to_json();
+            expect(json).toEqual(expected);
+            view.delete();
+            table.delete();
         });
 
-        it("update by adding rows (new pkeys) with partials/nulls", function(done) {
+        it("update by adding rows (new pkeys) with partials/nulls", async function() {
             var update = [{x: null, y: "e", z: null}];
             var expected = [{x: 1, y: "a", z: true}, {x: 2, y: "b", z: false}, {x: 3, y: "c", z: true}, {x: 4, y: "d", z: false}, {x: null, y: "e", z: null}];
             var table = perspective.table(meta, {index: "y"});
             var view = table.view();
             table.update(data);
             table.update(update);
-            view.to_json().then(json => {
-                expect(json).toEqual(expected);
-                view.delete();
-                table.delete();
-                done();
-            });
+            const json = await view.to_json();
+            expect(json).toEqual(expected);
+            view.delete();
+            table.delete();
         });
 
-        it("partial column oriented update with null unsets value", function(done) {
+        it("partial column oriented update with null unsets value", async function() {
             var partial = {
                 x: [null],
                 y: ["a"]
@@ -657,12 +665,10 @@ module.exports = perspective => {
             var view = table.view();
             table.update(col_data);
             table.update(partial);
-            view.to_json().then(json => {
-                expect(json).toEqual(expected);
-                view.delete();
-                table.delete();
-                done();
-            });
+            const json = await view.to_json();
+            expect(json).toEqual(expected);
+            view.delete();
+            table.delete();
         });
     });
 
@@ -740,6 +746,592 @@ module.exports = perspective => {
             expect(result2).toEqual(result.slice(1, 3));
             view.delete();
             table.delete();
+        });
+    });
+
+    describe("computed updates", function() {
+        it("partial update on column from schema", async function() {
+            let table = perspective.table({x: "integer", y: "integer"});
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "integer",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+            table2.update(computed_data);
+            table2.update([{__INDEX__: 0, x: 10}, {__INDEX__: 2, x: 10}]);
+            let view = table2.view();
+            let json = await view.to_json();
+            expect(json).toEqual([{x: 10, y: 2, multiply: 20}, {x: 2, y: 4, multiply: 8}, {x: 10, y: 6, multiply: 60}, {x: 4, y: 8, multiply: 32}]);
+        });
+
+        it("partial update on single computed source column", async function() {
+            let table = perspective.table(computed_data);
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+            table2.update([{__INDEX__: 0, x: 10}]);
+            let view = table2.view();
+            let json = await view.to_json();
+            expect(json).toEqual([{x: 10, y: 2, multiply: 20}, {x: 2, y: 4, multiply: 8}, {x: 3, y: 6, multiply: 18}, {x: 4, y: 8, multiply: 32}]);
+        });
+
+        it("partial update on non-contiguous computed source columns", async function() {
+            let table = perspective.table(computed_data);
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+            table2.update([{__INDEX__: 0, x: 1, y: 10}, {__INDEX__: 2, x: 3, y: 20}]);
+            let view = table2.view();
+            let json = await view.to_json();
+            expect(json).toEqual([{x: 1, y: 10, multiply: 10}, {x: 2, y: 4, multiply: 8}, {x: 3, y: 20, multiply: 60}, {x: 4, y: 8, multiply: 32}]);
+        });
+
+        it("partial update on non-contiguous computed source columns, indexed table", async function() {
+            let table = perspective.table(computed_data, {index: "x"});
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+            table2.update([{x: 1, y: 10}, {x: 3, y: 20}]);
+            let view = table2.view();
+            let json = await view.to_json();
+            expect(json).toEqual([{x: 1, y: 10, multiply: 10}, {x: 2, y: 4, multiply: 8}, {x: 3, y: 20, multiply: 60}, {x: 4, y: 8, multiply: 32}]);
+        });
+
+        it("multiple partial update on single computed source column", async function() {
+            let table = perspective.table(computed_data);
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            table2.update([{__INDEX__: 0, x: 10}, {__INDEX__: 2, x: 10}]);
+            table2.update([{__INDEX__: 0, x: 20}, {__INDEX__: 2, x: 20}]);
+            table2.update([{__INDEX__: 0, x: 30}, {__INDEX__: 2, x: 30}]);
+
+            let view = table2.view();
+            let json = await view.to_json();
+            expect(json).toEqual([{x: 30, y: 2, multiply: 60}, {x: 2, y: 4, multiply: 8}, {x: 30, y: 6, multiply: 180}, {x: 4, y: 8, multiply: 32}]);
+        });
+
+        it("multiple computed columns with updates on source columns", async function() {
+            let table = perspective.table(computed_data);
+
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table3 = table2.add_computed([
+                {
+                    column: "add",
+                    type: "float",
+                    func: (a, b) => a + b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            table3.update([{__INDEX__: 0, x: 5}, {__INDEX__: 2, x: 10}]);
+
+            let view = table2.view({
+                columns: ["add", "multiply"]
+            });
+
+            let json = await view.to_json();
+            expect(json).toEqual([{add: 7, multiply: 10}, {add: 6, multiply: 8}, {add: 16, multiply: 60}, {add: 12, multiply: 32}]);
+        });
+
+        it("maintain previous computed columns when creating new ones", async function() {
+            let table = perspective.table(computed_data);
+
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table3 = table2.add_computed([
+                {
+                    column: "add",
+                    type: "float",
+                    func: (a, b) => a + b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table4 = table3.add_computed([
+                {
+                    column: "subtract",
+                    type: "float",
+                    func: (a, b) => a - b,
+                    inputs: ["y", "x"]
+                }
+            ]);
+
+            let view = table4.view({
+                columns: ["add", "subtract", "multiply"]
+            });
+
+            let json = await view.to_json();
+            expect(json).toEqual([{add: 3, subtract: 1, multiply: 2}, {add: 6, subtract: 2, multiply: 8}, {add: 9, subtract: 3, multiply: 18}, {add: 12, subtract: 4, multiply: 32}]);
+        });
+
+        it("propagate updates to all computed columns", async function() {
+            let table = perspective.table(computed_data, {index: "x"});
+
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table3 = table2.add_computed([
+                {
+                    column: "add",
+                    type: "float",
+                    func: (a, b) => a + b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table4 = table3.add_computed([
+                {
+                    column: "subtract",
+                    type: "float",
+                    func: (a, b) => a - b,
+                    inputs: ["y", "x"]
+                }
+            ]);
+
+            table4.update({x: [1, 2, 3, 4], y: [1, 2, 3, 4]});
+
+            let view = table4.view({
+                columns: ["add", "subtract", "multiply"]
+            });
+
+            let json = await view.to_json();
+            expect(json).toEqual([{add: 2, subtract: 0, multiply: 1}, {add: 4, subtract: 0, multiply: 4}, {add: 6, subtract: 0, multiply: 9}, {add: 8, subtract: 0, multiply: 16}]);
+        });
+
+        it("propagate appends to all computed columns", async function() {
+            let table = perspective.table(computed_data);
+
+            let table2 = table.add_computed([
+                {
+                    column: "multiply",
+                    type: "float",
+                    func: (a, b) => a * b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table3 = table2.add_computed([
+                {
+                    column: "add",
+                    type: "float",
+                    func: (a, b) => a + b,
+                    inputs: ["x", "y"]
+                }
+            ]);
+
+            let table4 = table3.add_computed([
+                {
+                    column: "subtract",
+                    type: "float",
+                    func: (a, b) => a - b,
+                    inputs: ["y", "x"]
+                }
+            ]);
+
+            table4.update({x: [1, 2, 3, 4], y: [1, 2, 3, 4]});
+
+            let view = table4.view({
+                columns: ["add", "subtract", "multiply"]
+            });
+
+            let json = await view.to_json();
+            expect(json).toEqual([
+                {add: 3, subtract: 1, multiply: 2},
+                {add: 6, subtract: 2, multiply: 8},
+                {add: 9, subtract: 3, multiply: 18},
+                {add: 12, subtract: 4, multiply: 32},
+                {add: 2, subtract: 0, multiply: 1},
+                {add: 4, subtract: 0, multiply: 4},
+                {add: 6, subtract: 0, multiply: 9},
+                {add: 8, subtract: 0, multiply: 16}
+            ]);
+        });
+    });
+
+    describe("implicit index", function() {
+        it("should apply single partial update on unindexed table using row id from '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 2,
+                    y: "new_string"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[2]["y"] = "new_string";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should apply single multi-column partial update on unindexed table using row id from '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 2,
+                    y: "new_string",
+                    x: 100
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[2]["x"] = 100;
+            expected[2]["y"] = "new_string";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should apply updates using '__INDEX__' on a table with explicit index set", async function() {
+            let table = perspective.table(data, {index: "x"});
+            table.update([
+                {
+                    __INDEX__: 2,
+                    y: "new_string"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[1]["y"] = "new_string";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should apply multiple sequential updates using '__INDEX__' on a table with explicit index set", async function() {
+            let table = perspective.table(data, {index: "x"});
+            table.update([
+                {
+                    __INDEX__: 2,
+                    y: "new_string"
+                },
+                {
+                    __INDEX__: 3,
+                    y: "new_string"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[1]["y"] = "new_string";
+            expected[2]["y"] = "new_string";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should apply mulitple nonsequential updates using '__INDEX__' on a table with explicit index set", async function() {
+            let table = perspective.table(data, {index: "x"});
+            table.update([
+                {
+                    __INDEX__: 2,
+                    y: "new_string"
+                },
+                {
+                    __INDEX__: 4,
+                    y: "new_string"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[1]["y"] = "new_string";
+            expected[3]["y"] = "new_string";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should apply multiple sequential partial updates on unindexed table using '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 0,
+                    y: "new_string1"
+                },
+                {
+                    __INDEX__: 1,
+                    y: "new_string2"
+                },
+                {
+                    __INDEX__: 2,
+                    y: "new_string3"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["y"] = "new_string1";
+            expected[1]["y"] = "new_string2";
+            expected[2]["y"] = "new_string3";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should correctly apply multiple out-of-sequence partial updates on unindexed table using '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 0,
+                    y: "new_string1"
+                },
+                {
+                    __INDEX__: 2,
+                    y: "new_string3"
+                },
+                {
+                    __INDEX__: 3,
+                    y: "new_string4"
+                },
+                {
+                    __INDEX__: 1,
+                    y: "new_string2"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["y"] = "new_string1";
+            expected[1]["y"] = "new_string2";
+            expected[2]["y"] = "new_string3";
+            expected[3]["y"] = "new_string4";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should stack multiple partial updates on unindexed table using the same '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 0,
+                    y: "new_string1"
+                },
+                {
+                    __INDEX__: 0,
+                    y: "new_string2"
+                },
+                {
+                    __INDEX__: 0,
+                    y: "new_string3"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["y"] = "new_string3";
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("updates without '__INDEX' should append", async function() {
+            let table = perspective.table(data);
+            table.update([
+                {
+                    __INDEX__: 0,
+                    y: "new_string"
+                }
+            ]);
+            table.update([
+                {
+                    y: "new_string"
+                }
+            ]);
+            let view = table.view();
+            let result = await view.to_json();
+
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["y"] = "new_string";
+            expected.push({x: null, y: "new_string", z: null});
+
+            expect(result).toEqual(expected);
+            view.delete();
+            table.delete();
+        });
+
+        it("should partial update on 1-sided views using implicit '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            let view = table.view({
+                row_pivots: ["x"]
+            });
+
+            table.update([
+                {
+                    __INDEX__: 0,
+                    x: 100
+                }
+            ]);
+
+            let result = await view.to_json();
+            // update should be applied properly
+            expect(result).toEqual([
+                {__ROW_PATH__: [], x: 109, y: 4, z: 4},
+                {__ROW_PATH__: [2], x: 2, y: 1, z: 1},
+                {__ROW_PATH__: [3], x: 3, y: 1, z: 1},
+                {__ROW_PATH__: [4], x: 4, y: 1, z: 1},
+                {__ROW_PATH__: [100], x: 100, y: 1, z: 1}
+            ]);
+
+            // check that un-pivoted view reflects data correctly
+            let view2 = table.view();
+            let result2 = await view2.to_json();
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["x"] = 100;
+
+            expect(result2).toEqual(expected);
+
+            view.delete();
+            view2.delete();
+            table.delete();
+        });
+
+        it("should partial update on 2-sided views using implicit '__INDEX__'", async function() {
+            let table = perspective.table(data);
+            let view = table.view({
+                row_pivots: ["x"],
+                column_pivots: ["y"]
+            });
+
+            table.update([
+                {
+                    __INDEX__: 0,
+                    x: 100
+                }
+            ]);
+
+            let result = await view.to_json();
+            // update should be applied properly
+            expect(result).toEqual([
+                {__ROW_PATH__: [], "a|x": 100, "a|y": 1, "a|z": 1, "b|x": 2, "b|y": 1, "b|z": 1, "c|x": 3, "c|y": 1, "c|z": 1, "d|x": 4, "d|y": 1, "d|z": 1},
+                {__ROW_PATH__: [2], "a|x": null, "a|y": null, "a|z": null, "b|x": 2, "b|y": 1, "b|z": 1, "c|x": null, "c|y": null, "c|z": null, "d|x": null, "d|y": null, "d|z": null},
+                {__ROW_PATH__: [3], "a|x": null, "a|y": null, "a|z": null, "b|x": null, "b|y": null, "b|z": null, "c|x": 3, "c|y": 1, "c|z": 1, "d|x": null, "d|y": null, "d|z": null},
+                {__ROW_PATH__: [4], "a|x": null, "a|y": null, "a|z": null, "b|x": null, "b|y": null, "b|z": null, "c|x": null, "c|y": null, "c|z": null, "d|x": 4, "d|y": 1, "d|z": 1},
+                {__ROW_PATH__: [100], "a|x": 100, "a|y": 1, "a|z": 1, "b|x": null, "b|y": null, "b|z": null, "c|x": null, "c|y": null, "c|z": null, "d|x": null, "d|y": null, "d|z": null}
+            ]);
+
+            // check that un-pivoted view reflects data correctly
+            let view2 = table.view();
+            let result2 = await view2.to_json();
+            let expected = JSON.parse(JSON.stringify(data));
+            expected[0]["x"] = 100;
+
+            expect(result2).toEqual(expected);
+
+            view.delete();
+            view2.delete();
+            table.delete();
+        });
+    });
+
+    describe("Remove update", function() {
+        it("Should remove a single update", function(done) {
+            const cb1 = jest.fn();
+            const cb2 = () => {
+                expect(cb1).toBeCalledTimes(0);
+                setTimeout(() => {
+                    view.delete();
+                    table.delete();
+                    done();
+                }, 0);
+            };
+            const table = perspective.table(meta);
+            const view = table.view();
+            view.on_update(cb1);
+            view.on_update(cb2);
+            view.remove_update(cb1);
+            table.update(data);
+        });
+
+        it("Should remove multiple updates", function(done) {
+            const cb1 = jest.fn();
+            const cb2 = jest.fn();
+            const cb3 = function() {
+                // cb2 should have been called
+                expect(cb1).toBeCalledTimes(0);
+                expect(cb2).toBeCalledTimes(0);
+                setTimeout(() => {
+                    view.delete();
+                    table.delete();
+                    done();
+                }, 0);
+            };
+
+            const table = perspective.table(meta);
+            const view = table.view();
+            view.on_update(cb1);
+            view.on_update(cb2);
+            view.on_update(cb3);
+            view.remove_update(cb1);
+            view.remove_update(cb2);
+            table.update(data);
         });
     });
 };

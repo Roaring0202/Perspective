@@ -116,6 +116,8 @@ website/i18n/*
 .idea
 cmake-build-debug
 .ipynb_checkpoints
+.python-version
+.pytest_cache
 
 package.json.lerna_backup
 website/static/css/material.dark.css
@@ -136,3 +138,9 @@ docs/python
 package.json.bak
 yarn.lock.bak
 docs/static/img
+
+docs/static/arrow/
+.perspectiverc
+
+python/perspective/perspective/tests/table/psp_test
+python/perspective/perspective/node/assets/*

@@ -673,14 +673,11 @@ t_tscalar::to_string(bool for_expr) const {
             return ss.str();
         } break;
         case DTYPE_TIME: {
-            t_time value = get<t_time>();
-            struct tm t;
-            bool rcode = value.as_tm(t);
-            if (rcode) {
-                return value.str(t);
-            } else {
-                return std::string("Could not return datetime value.");
-            }
+            double timestamp = to_double() / 1000; // Unix timestamp in milliseconds
+            std::time_t temp = timestamp;
+            std::tm* t = std::gmtime(&temp);
+            ss << std::put_time(t, "%Y-%m-%d %H:%M:%S UTC");
+            return ss.str();
         } break;
         case DTYPE_STR: {
             if (for_expr) {
@@ -1085,17 +1082,11 @@ t_tscalar::cmp(t_filter_op op, const t_tscalar& other) const {
         case FILTER_OP_CONTAINS: {
             return value.contains(other);
         } break;
-        case FILTER_OP_IS_NAN: {
-            return std::isnan(to_double());
-        } break;
-        case FILTER_OP_IS_NOT_NAN: {
-            return !std::isnan(to_double());
-        } break;
-        case FILTER_OP_IS_VALID: {
-            return m_status == STATUS_VALID;
-        } break;
-        case FILTER_OP_IS_NOT_VALID: {
+        case FILTER_OP_IS_NULL: {
             return m_status != STATUS_VALID;
+        } break;
+        case FILTER_OP_IS_NOT_NULL: {
+            return m_status == STATUS_VALID;
         } break;
         default: { PSP_COMPLAIN_AND_ABORT("Invalid filter op"); } break;
     }

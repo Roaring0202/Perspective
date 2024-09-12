@@ -12,9 +12,9 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
-    <script src="perspective.view.js"></script>
-    <script src="hypergrid.plugin.js"></script>
-    <script src="highcharts.plugin.js"></script>
+    <script src="perspective-viewer.js"></script>
+    <script src="perspective-viewer-hypergrid.js"></script>
+    <script src="perspective-viewer-d3fc.js"></script>
     <script src="perspective.js"></script>
     <link rel='stylesheet' href="material.css">
 
@@ -49,7 +49,7 @@
     <script>
         window.addEventListener('WebComponentsReady', function() {
             var elem = document.getElementById('view1');
-            var worker = perspective.worker(window.location.origin.replace('http', 'ws'));
+            var worker = perspective.websocket();
             elem.load(worker.open_table('data_source_one'));
         });
     </script>

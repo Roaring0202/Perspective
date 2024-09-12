@@ -46,7 +46,7 @@ function barChart(container, settings) {
         .valueName("crossValue")
         .orient("vertical")(data);
 
-    const chart = chartSvgFactory(xAxis, yAxis).plotArea(withGridLines(series).orient("horizontal"));
+    const chart = chartSvgFactory(xAxis, yAxis).plotArea(withGridLines(series, settings).orient("horizontal"));
 
     if (chart.yPaddingInner) {
         chart.yPaddingInner(0.5);
@@ -67,7 +67,8 @@ function barChart(container, settings) {
 barChart.plugin = {
     type: "d3_x_bar",
     name: "X Bar Chart",
-    max_size: 25000
+    max_cells: 1000,
+    max_columns: 50
 };
 
 export default barChart;

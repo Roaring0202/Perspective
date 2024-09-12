@@ -1,31 +1,33 @@
-import {TableData, TableOptions, Schema, View, AggregateConfig} from '@finos/perspective';
+import {Table, TableData, TableOptions, Schema, View, ViewConfig} from '@finos/perspective';
 
 declare module '@finos/perspective-viewer' {
-    export type PerspectiveViewer = {
-        load(data: TableData): void;
+    export interface PerspectiveViewer extends PerspectiveViewerOptions, HTMLElement {
+        load(data: TableData | Table): void;
         load(schema: Schema, options: TableOptions): void;
         update(data: TableData): void;
         notifyResize(): void;
         delete(): Promise<void>;
         flush(): Promise<void>;
         toggleConfig(): void;
-        save(): any;
+        save(): PerspectiveViewerOptions;
+        reset(): void;
         restore(x: any): Promise<void>;
         restyleElement(): void;
+        readonly table?: Table;
+    }
 
-        sort?: Array<string>;
-        columns?: Array<string>;
-        aggregates?: Array<AggregateConfig>;
+    export interface PerspectiveViewerOptions extends Omit<ViewConfig, "row_pivots"|"column_pivots"|"filter" > {
+        aggregates?: { [column_name:string]: string};
+        editable? : boolean;
+        plugin? : string;
+        columns? : string[];
+        "computed-columns"? : { [column_name:string]: string}[];
+        "row-pivots"? : string[];
+        "column-pivots"? : string[];
         filters?: Array<Array<string>>;
-        view?: string;
-        column_pivots?: Array<string>;
-        row_pivots?: Array<string>;
-
-        schema?: Schema;
-        index?: string;
-        limit?: number;
-
-    } & HTMLElement;
+        sort?: string[][];
+    }
+    
 
 }
 

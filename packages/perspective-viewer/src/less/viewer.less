@@ -37,8 +37,9 @@
     position: relative;
     display: inline-block;
     overflow: hidden;
+    word-wrap: "normal";
 
-    --highcharts-heatmap-gradient-full: linear-gradient(
+    --highcharts-full--gradient: linear-gradient(
         #4d342f 0%,
         #e4521b 22.5%,
         #feeb65 42.5%,
@@ -48,12 +49,12 @@
         #1a237e 100%
     );
 
-    --highcharts-heatmap-gradient-positive: linear-gradient(
+    --highcharts-positive--gradient: linear-gradient(
         #dcedc8 0%,
         #42b3d5 35%,
         #1a237e 100%
     );
-    --highcharts-heatmap-gradient-negative: linear-gradient(
+    --highcharts-negative--gradient: linear-gradient(
         #feeb65 100%,
         #e4521b 70%,
         #4d342f 0%
@@ -65,8 +66,6 @@
     --hypergrid-header--color: #666;
     --hypergrid-positive--color: #1078d1;
     --hypergrid-negative--color: rgb(255, 136, 136);
-    --hypergrid-positive--background: #fff;
-    --hypergrid-negative--background: #fff;
     --hypergrid--font-size: 12px;
     --hypergrid-header--font-size: 12px;
     --hypergrid--font-family: Helvetica, @sans-serif-fonts;
@@ -75,6 +74,9 @@
     --hypergrid-row-hover--color: #666;
     --hypergrid-cell-hover--background: #eeeeee;
     --hypergrid-cell-hover--color: #666;
+
+    --integer--hypergrid--text-align: right;
+    --float--hypergrid--text-align: right;
 
     --d3fc-series: rgba(31, 119, 180, 0.5);
     --d3fc-series-1: #0366d6;
@@ -87,7 +89,7 @@
     --d3fc-series-8: #7f7f7f;
     --d3fc-series-9: #bcbd22;
     --d3fc-series-10: #17becf;
-    --d3fc-gradient-full: linear-gradient(
+    --d3fc-full--gradient: linear-gradient(
         #4d342f 0%,
         #e4521b 22.5%,
         #feeb65 42.5%,
@@ -96,12 +98,12 @@
         #42b3d5 67.5%,
         #1a237e 100%
     );
-    --d3fc-gradient-positive: linear-gradient(
+    --d3fc-positive--gradient: linear-gradient(
         #dcedc8 0%,
         #42b3d5 35%,
         #1a237e 100%
     );
-    --d3fc-gradient-negative: linear-gradient(
+    --d3fc-negative--gradient: linear-gradient(
         #feeb65 100%,
         #e4521b 70%,
         #4d342f 0%
@@ -155,11 +157,11 @@
         width: 100%;
         height: 100%;
     }
-    #app.hide_message {
-        #drop_target {
-            display: none;
-        }
+   // #app.hide_message {
+    #drop_target {
+        display: none;
     }
+    //}
     .chart {
         padding: 15px;
     }
@@ -182,7 +184,7 @@
     }
     #active_columns perspective-row {
         animation: expand 0.3s ease-out;
-        --column-selector--color: var(--active-column-selector--color, #999);
+        --column-selector--color: var(--active--color, #999);
         --is_visible--before: var(--active-column-selector--content, "\25CF");
     }
     #inactive_columns perspective-row {
@@ -268,6 +270,8 @@
     }
     #top_panel > .rrow > * {
         width: 100%;
+        padding: 12px 0px 12px 0px;
+        margin: -12px 0px -12px 0px;
     }
     .rrow #psp_row {
         white-space: nowrap;
@@ -358,7 +362,7 @@
         align-items: center;
         justify-content: center;
         &:hover {
-            color: var(--button-hover--color, inherit);
+            color: var(--active--color, inherit);
         }
     }
     .button {
@@ -387,6 +391,7 @@
         height: 24px;
         padding: var(--select--padding, 0px 0px 0px 6px);
         font-size: 12px;
+        font-family: inherit;
     }
     input {
         padding: 0 10px 0 10px;
@@ -410,6 +415,7 @@
         }
     }
     #side_panel {
+        position: relative;
         flex: 0 0 auto;
         padding: var(--side_panel--padding, 10px 10px 0px 11px);
     }
@@ -419,6 +425,7 @@
     #vis_selector_container {
         min-height: 29px;
         margin-left: var(--column_selector--width, 20px);
+        overflow: hidden;
     }
     #vis_selector {
         flex-grow: 1;
@@ -432,7 +439,16 @@
         font-family: Arial;
         font-size: 12px;
         &:hover {
-            color: var(--button-hover--color, inherit);
+            color: var(--active--color, inherit);
         }
+    }
+
+    #resize_bar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 8px;
+        cursor: col-resize;
     }
 }

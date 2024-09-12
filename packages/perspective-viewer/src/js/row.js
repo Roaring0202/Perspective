@@ -15,21 +15,24 @@ import awesomplete_style from "!!css-loader!awesomplete/awesomplete.css";
 import {bindTemplate} from "./utils.js";
 
 import perspective from "@finos/perspective";
+import {get_type_config} from "@finos/perspective/dist/esm/config";
 import template from "../html/row.html";
 
 import style from "../less/row.less";
+import {html, render} from "lit-html";
+
+const SPAN = document.createElement("span");
+SPAN.style.visibility = "hidden";
+SPAN.style.fontFamily = "monospace";
+SPAN.style.fontSize = "12px";
+SPAN.style.position = "absolute";
 
 function get_text_width(text, max = 0) {
-    let span = document.createElement("span");
     // FIXME get these values form the stylesheet
-    span.style.visibility = "hidden";
-    span.style.fontFamily = "monospace";
-    span.style.fontSize = "12px";
-    span.style.position = "absolute";
-    span.innerHTML = text;
-    document.body.appendChild(span);
-    let width = `${Math.max(max, span.offsetWidth) + 20}px`;
-    document.body.removeChild(span);
+    SPAN.innerHTML = text;
+    document.body.appendChild(SPAN);
+    const width = `${Math.max(max, SPAN.offsetWidth) + 20}px`;
+    document.body.removeChild(SPAN);
     return width;
 }
 
@@ -38,51 +41,55 @@ function get_text_width(text, max = 0) {
 @bindTemplate(template, {toString: () => style + "\n" + awesomplete_style}) // eslint-disable-next-line no-unused-vars
 class Row extends HTMLElement {
     set name(n) {
-        let elem = this.shadowRoot.querySelector("#name");
+        const elem = this.shadowRoot.querySelector("#name");
         elem.innerHTML = this.getAttribute("name");
     }
 
+    _option_template(agg) {
+        return html`
+            <option value="${agg}">${agg}</option>
+        `;
+    }
+
+    _select_template(category, type) {
+        const items = perspective[category][type] || [];
+        return html`
+            ${items.map(this._option_template)}
+        `;
+    }
+
     set type(t) {
-        let elem = this.shadowRoot.querySelector("#name");
-        let type = this.getAttribute("type");
+        const elem = this.shadowRoot.querySelector("#name");
+        const type = this.getAttribute("type");
         if (!type) return;
+        const type_config = get_type_config(type);
+        if (type_config.type) {
+            elem.classList.add(type_config.type);
+        }
         elem.classList.add(type);
-        let agg_dropdown = this.shadowRoot.querySelector("#column_aggregate");
-        let filter_dropdown = this.shadowRoot.querySelector("#filter_operator");
-        switch (type) {
-            case "float":
-            case "integer":
-                agg_dropdown.innerHTML = perspective.TYPE_AGGREGATES.float.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                filter_dropdown.innerHTML = perspective.TYPE_FILTERS.float.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                break;
-            case "boolean":
-                agg_dropdown.innerHTML = perspective.TYPE_AGGREGATES.boolean.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                filter_dropdown.innerHTML = perspective.TYPE_FILTERS.boolean.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                break;
-            case "date":
-                agg_dropdown.innerHTML = perspective.TYPE_AGGREGATES.datetime.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                filter_dropdown.innerHTML = perspective.TYPE_FILTERS.datetime.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                break;
-            case "datetime":
-                agg_dropdown.innerHTML = perspective.TYPE_AGGREGATES.datetime.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                filter_dropdown.innerHTML = perspective.TYPE_FILTERS.datetime.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                break;
-            case "string":
-                agg_dropdown.innerHTML = perspective.TYPE_AGGREGATES.string.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-                filter_dropdown.innerHTML = perspective.TYPE_FILTERS.string.map(agg => `<option value="${agg}">${agg}</option>`).join("");
-            default:
-        }
+        const agg_dropdown = this.shadowRoot.querySelector("#column_aggregate");
+        const filter_dropdown = this.shadowRoot.querySelector("#filter_operator");
+
+        render(this._select_template("TYPE_AGGREGATES", type_config.type || type), agg_dropdown);
+        render(this._select_template("TYPE_FILTERS", type_config.type || type), filter_dropdown);
+
         if (!this.hasAttribute("aggregate")) {
-            this.setAttribute("aggregate", perspective.AGGREGATE_DEFAULTS[type]);
+            this.aggregate = type_config.aggregate;
+        } else {
+            this.aggregate = this.getAttribute("aggregate");
         }
-        let filter_operand = this.shadowRoot.querySelector("#filter_operand");
+        if (this.hasAttribute("filter")) {
+            this.filter = this.getAttribute("filter");
+        }
+
+        const filter_operand = this.shadowRoot.querySelector("#filter_operand");
         this._callback = event => this._update_filter(event);
         filter_operand.addEventListener("keyup", this._callback.bind(this));
     }
 
     choices(choices) {
-        let filter_operand = this.shadowRoot.querySelector("#filter_operand");
-        let filter_operator = this.shadowRoot.querySelector("#filter_operator");
+        const filter_operand = this.shadowRoot.querySelector("#filter_operand");
+        const filter_operator = this.shadowRoot.querySelector("#filter_operator");
         const selector = new Awesomplete(filter_operand, {
             label: this.getAttribute("name"),
             list: choices,
@@ -95,7 +102,7 @@ class Row extends HTMLElement {
                 return Awesomplete.ITEM(text, input.match(/[^,]*$/)[0]);
             },
             replace: function(text) {
-                let before = this.input.value.match(/^.+,\s*|/)[0];
+                const before = this.input.value.match(/^.+,\s*|/)[0];
                 if (filter_operator.value === "in" || filter_operator.value === "not in") {
                     this.input.value = before + text + ", ";
                 } else {
@@ -119,7 +126,7 @@ class Row extends HTMLElement {
         const filter_dropdown = this.shadowRoot.querySelector("#filter_operator");
         const filter = JSON.parse(this.getAttribute("filter"));
         if (filter_dropdown.value !== filter.operator) {
-            filter_dropdown.value = filter.operator || perspective.FILTER_DEFAULTS[this.getAttribute("type")];
+            filter_dropdown.value = filter.operator || get_type_config(this.getAttribute("type")).filter_operator;
         }
         filter_dropdown.style.width = get_text_width(filter_dropdown.value);
         const filter_input = this.shadowRoot.querySelector("#filter_operand");
@@ -127,15 +134,20 @@ class Row extends HTMLElement {
         if (!this._initialized) {
             filter_input.value = operand;
         }
-        filter_input.style.width = get_text_width(operand, 30);
+        if (filter_dropdown.value === perspective.FILTER_OPERATORS.isNull || filter_dropdown.value === perspective.FILTER_OPERATORS.isNotNull) {
+            filter_input.style.display = "none";
+        } else {
+            filter_input.style.display = "inline-block";
+            filter_input.style.width = get_text_width(operand, 30);
+        }
     }
 
     set aggregate(a) {
-        let agg_dropdown = this.shadowRoot.querySelector("#column_aggregate");
-        let aggregate = this.getAttribute("aggregate");
+        const agg_dropdown = this.shadowRoot.querySelector("#column_aggregate");
+        const aggregate = this.getAttribute("aggregate");
         if (agg_dropdown.value !== aggregate && this.hasAttribute("type")) {
-            let type = this.getAttribute("type");
-            agg_dropdown.value = aggregate || perspective.AGGREGATE_DEFAULTS[type];
+            const type = this.getAttribute("type");
+            agg_dropdown.value = aggregate || get_type_config(type).aggregate;
         }
     }
 
@@ -159,10 +171,10 @@ class Row extends HTMLElement {
     }
 
     _update_filter(event) {
-        let filter_operand = this.shadowRoot.querySelector("#filter_operand");
-        let filter_operator = this.shadowRoot.querySelector("#filter_operator");
+        const filter_operand = this.shadowRoot.querySelector("#filter_operand");
+        const filter_operator = this.shadowRoot.querySelector("#filter_operator");
         let val = filter_operand.value;
-        let type = this.getAttribute("type");
+        const type = this.getAttribute("type");
         switch (type) {
             case "float":
                 val = parseFloat(val);
@@ -176,7 +188,7 @@ class Row extends HTMLElement {
             case "string":
             default:
         }
-        if (filter_operator.value === "in" || filter_operator.value === "not in") {
+        if (filter_operator.value === perspective.FILTER_OPERATORS.isIn || filter_operator.value === perspective.FILTER_OPERATORS.isNotIn) {
             val = val.split(",").map(x => x.trim());
         }
         this.setAttribute("filter", JSON.stringify({operator: filter_operator.value, operand: val}));
@@ -185,12 +197,12 @@ class Row extends HTMLElement {
 
     _set_data_transfer(event) {
         if (this.hasAttribute("filter")) {
-            let {operator, operand} = JSON.parse(this.getAttribute("filter"));
+            const {operator, operand} = JSON.parse(this.getAttribute("filter"));
             event.dataTransfer.setData("text", JSON.stringify([this.getAttribute("name"), operator, operand, this.getAttribute("type"), this.getAttribute("aggregate")]));
         } else {
             event.dataTransfer.setData(
                 "text",
-                JSON.stringify([this.getAttribute("name"), perspective.FILTER_DEFAULTS[this.getAttribute("type")], undefined, this.getAttribute("type"), this.getAttribute("aggregate")])
+                JSON.stringify([this.getAttribute("name"), get_type_config(this.getAttribute("type")).filter_operator, undefined, this.getAttribute("type"), this.getAttribute("aggregate")])
             );
         }
         this.dispatchEvent(new CustomEvent("row-drag"));

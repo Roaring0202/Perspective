@@ -1,5 +1,10 @@
-cmake_minimum_required (VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.7.2)
 project (psp)
+
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../../cmake/modules/" ${CMAKE_MODULE_PATH} )
@@ -29,13 +34,24 @@ function (psp_build_dep name cmake_file)
 			message(FATAL_ERROR "Build step for ${name} failed: ${result}")
 		endif()
 	endif()
-	add_subdirectory(${CMAKE_BINARY_DIR}/${name}-src
-		${CMAKE_BINARY_DIR}/${name}-build
-		EXCLUDE_FROM_ALL)
 
-	include_directories(${CMAKE_BINARY_DIR}/${name}-src/extras/${name}/include)
-	include_directories(${CMAKE_BINARY_DIR}/${name}-src/include)
-	include_directories(${CMAKE_BINARY_DIR}/${name}-src)
+	if(${name} STREQUAL arrow)
+		configure_file(${CMAKE_SOURCE_DIR}/../../cmake/arrow/CMakeLists.txt ${CMAKE_BINARY_DIR}/arrow-src/cpp/ COPYONLY)
+		configure_file(${CMAKE_SOURCE_DIR}/../../cmake/arrow/config.h ${CMAKE_BINARY_DIR}/arrow-src/cpp/src/arrow/util/ COPYONLY)
+		add_subdirectory(${CMAKE_BINARY_DIR}/arrow-src/cpp/
+			${CMAKE_BINARY_DIR}/arrow-build
+			EXCLUDE_FROM_ALL)
+
+		include_directories(${CMAKE_BINARY_DIR}/arrow-src/cpp/src/)
+	else()
+		add_subdirectory(${CMAKE_BINARY_DIR}/${name}-src
+			${CMAKE_BINARY_DIR}/${name}-build
+			EXCLUDE_FROM_ALL)
+
+		include_directories(${CMAKE_BINARY_DIR}/${name}-src/extras/${name}/include)
+		include_directories(${CMAKE_BINARY_DIR}/${name}-src/include)
+		include_directories(${CMAKE_BINARY_DIR}/${name}-src)
+	endif()
 endfunction()
 ##############################
 
@@ -52,7 +68,6 @@ option(PSP_CPP_BUILD_TESTS "Build the C++ Tests" OFF)
 option(PSP_PYTHON_BUILD "Build the Python Bindings" OFF)
 option(PSP_CPP_BUILD_STRICT "Build the C++ with strict warnings" OFF)
 option(PSP_BUILD_DOCS "Build the Perspective documentation" OFF)
-
 
 if (NOT DEFINED PSP_WASM_BUILD)
 	set(PSP_WASM_BUILD ON)
@@ -154,18 +169,22 @@ if (PSP_WASM_BUILD)
 	set(CMAKE_RANLIB emranlib)
 	set(CMAKE_EXECUTABLE_SUFFIX ".js")
 	list(APPEND CMAKE_PREFIX_PATH /usr/local)
-	include_directories("/usr/local/include")
+	include_directories("/usr/local/Homebrew/include")
+	include_directories("/usr/local/include" SYSTEM)
 	include_directories("/boost_includes")
-
+	psp_build_dep("rapidjson" "../../cmake/rapidjson.txt.in")
+	
 	set(EXTENDED_FLAGS " \
 		--bind \
 		--source-map-base ./build/ \
 		--memory-init-file 0 \
-		-fno-rtti \
-		-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 \
 		-s NO_EXIT_RUNTIME=1 \
 		-s NO_FILESYSTEM=1 \
 		-s ALLOW_MEMORY_GROWTH=1 \
+		-s MODULARIZE=1 \
+		-s EXPORT_NAME=\"load_perspective\" \
+		-s EXPORT_ES6=1 \
+		-s USE_ES6_IMPORT_META=0 \
 		-s EXPORTED_FUNCTIONS=\"['_main']\" \
 		")
 
@@ -173,7 +192,10 @@ if (PSP_WASM_BUILD)
 		set(OPT_FLAGS " \
 			-O0 \
 			-g4 \
-			-s SAFE_HEAP=1 \
+			--profiling \
+			-s WARN_UNALIGNED=1 \
+			-Wcast-align \
+			-Wover-aligned \
 			-s DISABLE_EXCEPTION_CATCHING=0 \
 			-s ASSERTIONS=2 \
 			-s DEMANGLE_SUPPORT=1 \
@@ -182,15 +204,14 @@ if (PSP_WASM_BUILD)
 		set(OPT_FLAGS " \
 			-O3 \
 			-g0 \
+			-s WASM_OBJECT_FILES=0 \
 			--llvm-lto 3 \
 			--closure 1 \
 			-s AGGRESSIVE_VARIABLE_ELIMINATION=1 \
 			")
 	endif()
 
-	set(SYNC_MODE_FLAGS "-s ENVIRONMENT=node -s BINARYEN_ASYNC_COMPILATION=0  -s WASM=1")
-	set(ASYNC_MODE_FLAGS "-s ENVIRONMENT=worker -s BINARYEN_ASYNC_COMPILATION=1 -s WASM=1")
-	set(ASMJS_MODE_FLAGS "-s ENVIRONMENT=worker -s LEGACY_VM_SUPPORT=1 -s BINARYEN_ASYNC_COMPILATION=0 -Wno-almost-asm -s WASM=0")
+	set(ASYNC_MODE_FLAGS "-s -s BINARYEN_ASYNC_COMPILATION=1 -s WASM=1")
 elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 	#####################
 	# VANILLA CPP BUILD #
@@ -210,13 +231,16 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 	set(ASYNC_MODE_FLAGS "")
 	set(ASMJS_MODE_FLAGS "")
 
-	find_package(Boost)
-	if(NOT Boost_FOUND)
-		message("${Red}Boost could not be located${ColorReset}")
-	else()
-		message("${Cyan}Found boost in ${Boost_INCLUDE_DIRS} ${Boost_LIBRARY_DIRS} ${ColorReset}")
+	if(PSP_CPP_BUILD)
+		# filesystem not required for Python, as we link to prebuilt arrow shared library
+		find_package(Boost COMPONENTS filesystem)
+		if(NOT Boost_FOUND)
+			message("${Red}Boost could not be located${ColorReset}")
+		else()
+			message("${Cyan}Found boost in ${Boost_INCLUDE_DIRS} ${Boost_LIBRARY_DIRS} ${ColorReset}")
+		endif()
+		include_directories( ${Boost_INCLUDE_DIRS} )
 	endif()
-	include_directories( ${Boost_INCLUDE_DIRS} )
 
 	find_package(TBB)
 	if(NOT TBB_FOUND)
@@ -240,26 +264,76 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		# PYTHON BINDINGS BUILD #
 		#########################
 		include_directories("/usr/local/include/python3.7m")  # FIXME
-		include_directories("${CMAKE_SOURCE_DIR}/../../python/table/perspective/include")
+		include_directories("${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/include")
 		find_package( PythonInterp 3.7 REQUIRED )
 		find_package( PythonLibs 3.7 REQUIRED )
 		include_directories( ${PYTHON_INCLUDE_DIRS} )
+
+
+		find_package(Boost)
+		if(NOT Boost_FOUND)
+			message("${Red}Boost could not be located${ColorReset}")
+		else()
+			message("${Cyan}Found boost in ${Boost_INCLUDE_DIRS} ${Boost_LIBRARY_DIRS} ${ColorReset}")
+		endif()
+		include_directories( ${Boost_INCLUDE_DIRS} )
+
+		find_package(pybind11)
+		if(NOT pybind11_FOUND)
+		    message("${Red}PyBind11 could not be located${ColorReset}")
+			psp_build_dep("pybind11" "../../cmake/Pybind.txt.in")
+		else()
+		    message("${Cyan}Found PyBind11 in ${pybind11_INCLUDE_DIRS}${ColorReset}")
+		endif()
+		include_directories( ${pybind11_INCLUDE_DIRS} )
+
 		find_package(NumPy)
+		if(NOT PYTHON_NUMPY_FOUND)
+			message(FATAL_ERROR "${Red}Numpy could not be located${ColorReset}")
+		else()
+			message(WARNING "${Cyan}Numpy found: ${PYTHON_NUMPY_INCLUDE_DIR}${ColorReset}")
 
-		find_package( Boost COMPONENTS python REQUIRED )
-		find_library( BOOST_PYTHON boost_python)
-		find_library( BOOST_NUMPY boost_numpy)
-		include_directories( ${Boost_INCLUDE_DIR} )
-
+		endif()
 		include_directories( ${PYTHON_NUMPY_INCLUDE_DIR})
+
+		find_package(PyArrow 0.15 REQUIRED)
+
+		if(NOT PYTHON_PYARROW_FOUND)
+			message(FATAL_ERROR "${Red}PyArrow could not be located${ColorReset}")
+		else()
+			message(WARNING "${Cyan}PyArrow found: ${PYTHON_PYARROW_INCLUDE_DIR}${ColorReset}")
+			if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+				message(WARNING "${Cyan}Using pre-built libarrow from: ${PYTHON_PYARROW_INCLUDE_DIR}${ColorReset}")
+			endif()
+		endif()
+		include_directories(${PYTHON_PYARROW_INCLUDE_DIR})
+		link_directories(${PYTHON_PYARROW_LIBRARY_DIR})
+
 		#####################
 	endif()
 endif()
 
 psp_build_dep("hopscotch" "../../cmake/hopscotch.txt.in")
+psp_build_dep("ordered-map" "../../cmake/ordered-map.txt.in")
+
+# For all non-MacOS builds, or if building WASM/CPP, build minimal arrow from source
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR NOT PSP_PYTHON_BUILD)
+	# build arrow + dependencies from source for Emscripten and C++
+	message("${Cyan}Building minimal Apache Arrow${ColorReset}")
+
+	psp_build_dep("double-conversion" "../../cmake/double-conversion.txt.in")
+	psp_build_dep("arrow" "../../cmake/arrow.txt.in")
+
+	find_package(Flatbuffers)
+	if(NOT FLATBUFFERS_FOUND)
+		message(FATAL_ERROR"${Red}Flatbuffers could not be located${ColorReset}")
+	else()
+		message("${Cyan}Found Flatbuffers in ${FLATBUFFERS_INCLUDE_DIR}${ColorReset}")
+		include_directories( ${FLATBUFFERS_INCLUDE_DIR} )
+	endif()
+endif()
 
 #####################
-
 
 set(CMAKE_C_FLAGS " \
 	${CMAKE_C_FLAGS} \
@@ -271,6 +345,7 @@ set (SOURCE_FILES
 	src/cpp/aggregate.cpp
 	src/cpp/aggspec.cpp
 	src/cpp/arg_sort.cpp
+	src/cpp/arrow.cpp
 	src/cpp/base.cpp
 	src/cpp/base_impl_linux.cpp
 	src/cpp/base_impl_osx.cpp
@@ -293,8 +368,9 @@ set (SOURCE_FILES
 	src/cpp/context_two.cpp
 	src/cpp/context_zero.cpp
 	src/cpp/custom_column.cpp
-	src/cpp/data_slice.cpp
 	src/cpp/data.cpp
+	src/cpp/data_slice.cpp
+	src/cpp/data_table.cpp
 	src/cpp/date.cpp
 	src/cpp/dense_nodes.cpp
 	src/cpp/dense_tree_context.cpp
@@ -343,19 +419,33 @@ set (SOURCE_FILES
 	src/cpp/utils.cpp
 	src/cpp/update_task.cpp
 	src/cpp/view.cpp
+	src/cpp/view_config.cpp
 	src/cpp/vocab.cpp
+	)
+
+set (PYTHON_SOURCE_FILES
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/accessor.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/context.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/fill.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/python.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/serialization.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/table.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/utils.cpp
+	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/view.cpp
 	)
 
 if (WIN32)
 	set(CMAKE_CXX_FLAGS " /EHsc")
 else()
-	set(CMAKE_CXX_FLAGS " -std=c++0x ${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
+	set(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 endif()
 
 if (PSP_WASM_BUILD)
+
 	add_library(psp ${SOURCE_FILES})
 	target_compile_definitions(psp PRIVATE PSP_ENABLE_WASM=1)
 	set_target_properties(psp PROPERTIES COMPILE_FLAGS "${ASYNC_MODE_FLAGS}")
+	target_link_libraries(psp arrow)
 
 	add_executable(perspective.async src/cpp/emscripten.cpp)
 	target_link_libraries(perspective.async psp "${ASYNC_MODE_FLAGS}")
@@ -363,22 +453,6 @@ if (PSP_WASM_BUILD)
 	set_target_properties(perspective.async PROPERTIES COMPILE_FLAGS "${ASYNC_MODE_FLAGS}")
 	set_target_properties(perspective.async PROPERTIES RUNTIME_OUTPUT_DIRECTORY "./build/")
 	set_target_properties(perspective.async PROPERTIES OUTPUT_NAME "psp.async")
-
-	add_executable(perspective.sync src/cpp/emscripten.cpp)
-	target_link_libraries(perspective.sync psp "${SYNC_MODE_FLAGS}")
-	target_compile_definitions(perspective.sync PRIVATE PSP_ENABLE_WASM=1)
-	set_target_properties(perspective.sync PROPERTIES COMPILE_FLAGS "${SYNC_MODE_FLAGS}")
-	set_target_properties(perspective.sync PROPERTIES RUNTIME_OUTPUT_DIRECTORY "./build/")
-	set_target_properties(perspective.sync PROPERTIES OUTPUT_NAME "psp.sync")
-
-	if (NOT CMAKE_BUILD_TYPE_LOWER STREQUAL debug)
-		add_executable(perspective.asm src/cpp/emscripten.cpp)
-		target_compile_definitions(perspective.asm PRIVATE PSP_ENABLE_WASM=1)
-		target_link_libraries(perspective.asm psp "${ASMJS_MODE_FLAGS}")
-		set_target_properties(perspective.asm PROPERTIES COMPILE_FLAGS "${ASMJS_MODE_FLAGS}")
-		set_target_properties(perspective.asm PROPERTIES RUNTIME_OUTPUT_DIRECTORY "./build/")
-		set_target_properties(perspective.asm PROPERTIES OUTPUT_NAME "psp.asmjs")
-	endif()
 elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		set(CMAKE_SHARED_LIBRARY_SUFFIX .dylib)
@@ -388,23 +462,43 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		########################
 		# Python extra targets #
 		########################
-		add_library(psp SHARED ${SOURCE_FILES} ${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/numpy.cpp ${HEADER_FILES})
+		add_library(psp SHARED ${SOURCE_FILES} ${HEADER_FILES})
+
 		target_compile_definitions(psp PRIVATE PSP_ENABLE_PYTHON=1)
-		target_link_libraries(psp ${BOOST_PYTHON})
-		target_link_libraries(psp ${BOOST_NUMPY})
-		target_link_libraries(psp ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+
+		# On MacOS, link against libarrow 0.15.0 in pyarrow directory
+		# This does not work for Linux or Windows - prebuilt binaries for Linux must be backward compatible with GCC 4.8,
+		# which means they use the old ABI: https://github.com/blue-yonder/turbodbc/issues/102#issuecomment-312222949
+		if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+			target_link_libraries(psp ${PYTHON_PYARROW_SHARED_LIBRARY})
+		else()
+			target_link_libraries(psp arrow)
+			target_link_libraries(psp ${Boost_FILESYSTEM_LIBRARY})
+		endif()
+
+		target_link_libraries(psp ${PYTHON_LIBRARIES})
 		set(CMAKE_SHARED_LIBRARY_SUFFIX .so)
 
-		add_library(binding SHARED ${CMAKE_SOURCE_DIR}/../../python/table/perspective/src/python.cpp)
+		add_library(binding SHARED ${PYTHON_SOURCE_FILES})
+
 		target_compile_definitions(binding PRIVATE PSP_ENABLE_PYTHON=1)
+		target_compile_options(binding PRIVATE -Wdeprecated-declarations)
 		target_link_libraries(binding psp)
 		target_link_libraries(binding tbb)
-		target_link_libraries(binding ${BOOST_PYTHON})
-		target_link_libraries(binding ${BOOST_NUMPY})
-		target_link_libraries(binding ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
+
+		# Link again libarrow from pyarrow
+		if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+			target_link_libraries(binding ${PYTHON_PYARROW_SHARED_LIBRARY})
+		else()
+			target_link_libraries(psp ${PYTHON_PYARROW_LIBRARIES})
+		endif()
+		target_link_libraries(binding ${PYTHON_PYARROW_SHARED_LIBRARY})
+		target_link_libraries(binding ${PYTHON_LIBRARIES})
 		########################
 	else()
 		add_library(psp SHARED ${SOURCE_FILES} ${HEADER_FILES})
+		target_link_libraries(psp arrow)
+		target_link_libraries(psp ${Boost_FILESYSTEM_LIBRARY})
 	endif()
 
 	if(PSP_CPP_BUILD_STRICT AND NOT WIN32)

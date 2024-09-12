@@ -6,22 +6,21 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-import WebsocketHeartbeatJs from "websocket-heartbeat-js";
-import * as defaults from "./defaults.js";
 
-import {worker} from "./API/worker.js";
+import * as defaults from "./config/constants.js";
+import {get_config} from "./config";
+import {Client} from "./api/client.js";
 
-import asmjs_worker from "./perspective.asmjs.js";
 import wasm_worker from "./perspective.wasm.js";
-
 import wasm from "./psp.async.wasm.js";
+import {override_config} from "../../dist/esm/config/index.js";
 
-import {detect_iphone} from "./utils.js";
+const HEARTBEAT_TIMEOUT = 15000;
 
 /**
  * Singleton WASM file download cache.
  */
-const override = new class {
+const override = new (class {
     _fetch(url) {
         return new Promise(resolve => {
             let wasmXHR = new XMLHttpRequest();
@@ -49,36 +48,41 @@ const override = new class {
         }
         return this._wasm;
     }
-}();
+})();
 
 /**
  * WebWorker extends Perspective's `worker` class and defines interactions using the WebWorker API.
  *
  * This class serves as the client API for transporting messages to/from Web Workers.
  */
-class WebWorker extends worker {
-    constructor() {
+class WebWorkerClient extends Client {
+    constructor(config) {
+        if (config) {
+            override_config(config);
+        }
         super();
         this.register();
     }
 
     /**
-     * When the worker is created, load either the ASM or WASM bundle depending on WebAssembly compatibility.
+     * When the worker is created, load either the ASM or WASM bundle depending
+     * on WebAssembly compatibility.  Don't use transferrable so multiple
+     * workers can be instantiated.
      */
     async register() {
-        let worker;
-        const msg = {cmd: "init"};
-        if (typeof WebAssembly === "undefined" || detect_iphone()) {
-            worker = await asmjs_worker();
+        let _worker;
+        const msg = {cmd: "init", config: get_config()};
+        if (typeof WebAssembly === "undefined") {
+            throw new Error("WebAssembly not supported. Support for ASM.JS has been removed as of 0.3.1.");
         } else {
-            [worker, msg.buffer] = await Promise.all([override.worker(), override.wasm()]);
+            [_worker, msg.buffer] = await Promise.all([override.worker(), override.wasm()]);
         }
         for (var key in this._worker) {
-            worker[key] = this._worker[key];
+            _worker[key] = this._worker[key];
         }
-        this._worker = worker;
+        this._worker = _worker;
         this._worker.addEventListener("message", this._handle.bind(this));
-        this._worker.postMessage(msg, [msg.buffer]);
+        this._worker.postMessage(msg);
         this._detect_transferable();
     }
 
@@ -119,18 +123,19 @@ class WebWorker extends worker {
  *
  * If the message has a transferable asset, set the `pending_arrow` flag to tell the worker the next message is an ArrayBuffer.
  */
-class WebSocketWorker extends worker {
+class WebSocketClient extends Client {
     constructor(url) {
         super();
-        this._ws = new WebsocketHeartbeatJs({
-            url,
-            pingTimeout: 15000,
-            pingMsg: "heartbeat"
-        });
-        this._ws.ws.binaryType = "arraybuffer";
+        this._ws = new WebSocket(url);
+        this._ws.binaryType = "arraybuffer";
         this._ws.onopen = () => {
             this.send({id: -1, cmd: "init"});
         };
+        const heartbeat = () => {
+            this._ws.send("heartbeat");
+            setTimeout(heartbeat, HEARTBEAT_TIMEOUT);
+        };
+        setTimeout(heartbeat, 15000);
         this._ws.onmessage = msg => {
             if (msg.data === "heartbeat") {
                 return;
@@ -140,13 +145,12 @@ class WebSocketWorker extends worker {
                 delete this._pending_arrow;
             } else {
                 msg = JSON.parse(msg.data);
-                /**
-                 * If the `is_transferable` flag is set, the worker expects the next message to be a transferable object.
-                 *
-                 * This sets the `_pending_arrow` flag, which triggers a special handler for the ArrayBuffer containing arrow data.
-                 */
+
+                // If the `is_transferable` flag is set, the worker expects the
+                // next message to be a transferable object.
+                // This sets the `_pending_arrow` flag, which triggers a special
+                // handler for the ArrayBuffer containing arrow data.
                 if (msg.is_transferable) {
-                    console.warn("Arrow transfer detected!");
                     this._pending_arrow = msg.id;
                 } else {
                     this._handle({data: msg});
@@ -171,12 +175,17 @@ class WebSocketWorker extends worker {
  */
 
 const WORKER_SINGLETON = (function() {
-    let __WORKER__;
+    let __WORKER__, __CONFIG__;
     return {
-        getInstance: function() {
+        getInstance: function(config) {
             if (__WORKER__ === undefined) {
-                __WORKER__ = new WebWorker();
+                __WORKER__ = new WebWorkerClient(config);
             }
+            const config_str = JSON.stringify(config);
+            if (__CONFIG__ && config_str !== __CONFIG__) {
+                throw new Error(`Confiuration object for shared_worker() has changed - this is probably a bug in your application.`);
+            }
+            __CONFIG__ = config_str;
             return __WORKER__;
         }
     };
@@ -194,21 +203,27 @@ const mod = {
     override: x => override.set(x),
 
     /**
-     * Create a new WebWorker instance. If the `url` parameter is provided, load the worker
-     * at `url` using a WebSocket.
+     * Create a new WebWorkerClient instance.
      *s
-     * @param {*} url
+     * @param {*} [config] An optional perspective config object override
      */
-    worker(url) {
-        if (url) {
-            return new WebSocketWorker(url);
-        } else {
-            return new WebWorker();
-        }
+    worker(config) {
+        return new WebWorkerClient(config);
     },
 
-    shared_worker() {
-        return WORKER_SINGLETON.getInstance();
+    /**
+     * Create a new WebSocketClient instance. The `url` parameter is provided, load the worker
+     * at `url` using a WebSocket.
+     *s
+     * @param {*} url Defaults to `window.location.origin`
+     * @param {*} [config] An optional perspective config object override
+     */
+    websocket(url = window.location.origin.replace("http", "ws")) {
+        return new WebSocketClient(url);
+    },
+
+    shared_worker(config) {
+        return WORKER_SINGLETON.getInstance(config);
     }
 };
 

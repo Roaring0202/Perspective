@@ -7,23 +7,9 @@
  *
  */
 
-const utils = require("@finos/perspective-viewer/test/js/utils.js");
+const utils = require("@finos/perspective-test");
 const path = require("path");
-
-async function capture_update(page, viewer, body) {
-    await page.evaluate(element => {
-        element.addEventListener("perspective-view-update", () => {
-            element.setAttribute("test-updated", true);
-        });
-    }, viewer);
-    await body();
-    try {
-        await page.waitFor(element => element.hasAttribute("test-updated"), {timeout: 3000}, viewer);
-    } catch (e) {
-        console.error("Missing 'test-updated' attribute");
-    }
-    await page.evaluate(element => element.removeAttribute("test-updated"), viewer);
-}
+const {capture_update} = require("./utils.js");
 
 utils.with_server({}, () => {
     describe.page(
@@ -49,6 +35,7 @@ utils.with_server({}, () => {
                     await page.shadow_click("perspective-viewer", "#config_button");
                     await page.evaluate(element => element.setAttribute("column-pivots", '["y"]'), viewer);
                 });
+
                 test.capture("regular updates", async page => {
                     const viewer = await page.$("perspective-viewer");
                     await page.shadow_click("perspective-viewer", "#config_button");

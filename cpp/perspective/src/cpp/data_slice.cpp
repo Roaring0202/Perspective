@@ -15,7 +15,7 @@ namespace perspective {
 template <typename CTX_T>
 t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row,
     t_uindex end_row, t_uindex start_col, t_uindex end_col, t_uindex row_offset,
-    t_uindex col_offset, const std::shared_ptr<std::vector<t_tscalar>>& slice,
+    t_uindex col_offset, const std::vector<t_tscalar>& slice,
     std::vector<std::vector<t_tscalar>> column_names)
     : m_ctx(ctx)
     , m_start_row(start_row)
@@ -32,7 +32,7 @@ t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row
 template <typename CTX_T>
 t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row,
     t_uindex end_row, t_uindex start_col, t_uindex end_col, t_uindex row_offset,
-    t_uindex col_offset, const std::shared_ptr<std::vector<t_tscalar>>& slice,
+    t_uindex col_offset, const std::vector<t_tscalar>& slice,
     std::vector<std::vector<t_tscalar>> column_names, std::vector<t_uindex> column_indices)
     : m_ctx(ctx)
     , m_start_row(start_row)
@@ -47,6 +47,29 @@ t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row
     m_stride = m_end_col - m_start_col;
 }
 
+/**
+ * @brief Construct a new data slice, with a vector of row indices on which to access the
+ * underlying data.
+ *
+ * @tparam CTX_T
+ * @param ctx
+ * @param slice
+ * @param row_indices
+ */
+template <typename CTX_T>
+t_data_slice<CTX_T>::t_data_slice(
+    std::shared_ptr<CTX_T> ctx, const std::vector<t_tscalar>& slice, t_uindex end_row)
+    : m_ctx(ctx)
+    , m_end_row(end_row)
+    , m_slice(slice) {
+    m_start_row = 0;
+    m_start_col = 0;
+    m_end_col = m_ctx->get_column_count();
+    m_stride = m_end_col;
+    m_row_offset = 0;
+    m_col_offset = 0;
+}
+
 template <typename CTX_T>
 t_data_slice<CTX_T>::~t_data_slice() {}
 
@@ -57,12 +80,35 @@ t_data_slice<CTX_T>::get(t_uindex ridx, t_uindex cidx) const {
     ridx += m_row_offset;
     t_uindex idx = get_slice_idx(ridx, cidx);
     t_tscalar rv;
-    if (idx >= m_slice->size()) {
+    if (idx >= m_slice.size()) {
         rv.clear();
     } else {
-        rv = m_slice->operator[](idx);
+        rv = m_slice.operator[](idx);
     }
     return rv;
+}
+
+template <typename CTX_T>
+std::vector<t_tscalar>
+t_data_slice<CTX_T>::get_pkeys(t_uindex ridx, t_uindex cidx) const {
+    std::pair<t_uindex, t_uindex> pair{ridx, cidx};
+    std::vector<std::pair<t_uindex, t_uindex>> vec{pair};
+    return m_ctx->get_pkeys(vec);
+}
+
+template <typename CTX_T>
+std::vector<t_tscalar>
+t_data_slice<CTX_T>::get_column_slice(t_uindex cidx) const {
+    std::vector<t_tscalar> column_data;
+    column_data.reserve(m_end_row);
+
+    for (t_uindex ridx = 0; ridx < m_end_row; ++ridx) {
+        ridx += m_row_offset;
+        t_tscalar value = get(ridx, cidx);
+        column_data.push_back(value);
+    }
+
+    return column_data;
 }
 
 template <typename CTX_T>
@@ -79,7 +125,7 @@ t_data_slice<CTX_T>::get_context() const {
 }
 
 template <typename CTX_T>
-std::shared_ptr<std::vector<t_tscalar>>
+const std::vector<t_tscalar>&
 t_data_slice<CTX_T>::get_slice() const {
     return m_slice;
 }

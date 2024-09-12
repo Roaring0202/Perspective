@@ -7,16 +7,11 @@
  *
  */
 
-const node_perspective = require("../../build/perspective.node.js");
+const node_perspective = require("../../dist/umd/perspective.node.js");
 
 const RUNTIMES = {
     NODE: node_perspective
 };
-
-if (!process.env.PSP_DEBUG) {
-    require("../../build/perspective.asmjs.worker.js");
-    RUNTIMES.ASMJS = global.perspective;
-}
 
 const clear_tests = require("./clear.js");
 const constructor_tests = require("./constructors.js");
@@ -28,6 +23,9 @@ const internal_tests = require("./internal.js");
 const toformat_tests = require("./to_format.js");
 const sort_tests = require("./sort.js");
 const multiple_tests = require("./multiple.js");
+const pivot_nulls = require("./pivot_nulls.js");
+const computed = require("./computed.js");
+const delete_tests = require("./delete.js");
 
 describe("perspective.js", function() {
     Object.keys(RUNTIMES).forEach(function(mode) {
@@ -42,6 +40,9 @@ describe("perspective.js", function() {
             internal_tests(RUNTIMES[mode], mode);
             sort_tests(RUNTIMES[mode], mode);
             multiple_tests(RUNTIMES[mode], mode);
+            pivot_nulls(RUNTIMES[mode], mode);
+            computed(RUNTIMES[mode], mode);
+            delete_tests(RUNTIMES[mode], mode);
         });
     });
 });

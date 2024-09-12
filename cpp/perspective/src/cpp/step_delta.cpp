@@ -47,9 +47,11 @@ t_stepdelta::t_stepdelta(
 // t_rowdelta contains a vector of row indices that have been changed
 t_rowdelta::t_rowdelta() {}
 
-t_rowdelta::t_rowdelta(bool rows_changed, const std::vector<std::int32_t>& rows)
+t_rowdelta::t_rowdelta(
+    bool rows_changed, t_uindex num_rows_changed, const std::vector<t_tscalar>& data)
     : rows_changed(rows_changed)
-    , rows(rows) {}
+    , num_rows_changed(num_rows_changed)
+    , data(data) {}
 } // end namespace perspective
 
 namespace std {

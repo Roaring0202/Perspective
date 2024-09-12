@@ -36,12 +36,6 @@ SUPPRESS_WARNINGS_VC(4505)
 #include <unistd.h>
 #endif
 
-#ifdef PSP_ENABLE_PYTHON
-namespace py = boost::python;
-namespace np = boost::python::numpy;
-#include <perspective/numpy.h>
-#endif
-
 namespace perspective {
 
 t_lstore_recipe::t_lstore_recipe()
@@ -519,7 +513,9 @@ void
 t_lstore::clear() {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+#ifndef PSP_ENABLE_WASM
     memset(m_base, 0, size_t(capacity()));
+#endif
     {
         t_unlock_store tmp(this);
         m_size = 0;
@@ -592,18 +588,14 @@ t_lstore::clone() const {
 }
 
 #ifdef PSP_ENABLE_PYTHON
-np::ndarray
+py::array
 t_lstore::_as_numpy(t_dtype dtype) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     PSP_VERBOSE_ASSERT(dtype != DTYPE_STR, "as_numpy not implemented for string columns yet");
 
-    np::dtype npdtype = get_numpy_typenum_from_dtype(dtype);
-    py::tuple shape = py::make_tuple(m_size / get_dtype_size(dtype));
-    py::tuple stride = py::make_tuple(get_dtype_size(dtype));
-
-    np::ndarray result = np::from_data(m_base, npdtype, shape, stride, py::object());
-
+    // TODO
+    py::array result;
     return result;
     // PSP_VERBOSE_ASSERT(rval, "Null array found!");
 }

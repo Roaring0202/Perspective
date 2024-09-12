@@ -21,7 +21,7 @@ function docker() {
     if (process.env.PSP_CPU_COUNT) {
         cmd += ` --cpus="${parseInt(process.env.PSP_CPU_COUNT)}.0"`;
     }
-    cmd += " perspective/puppeteer nice -n -20 node packages/perspective/bench/js/bench.js";
+    cmd += " perspective/puppeteer nice -n -20 node_modules/.bin/lerna exec --scope=@finos/perspective-bench -- yarn bench";
 
     if (LIMIT !== -1) {
         let limit = args[LIMIT + 1];
@@ -36,7 +36,11 @@ function docker() {
 }
 
 try {
-    execute(docker());
+    if (!process.env.PSP_LOCAL_PUPPETEER) {
+        execute(docker());
+    } else {
+        execute(`nice -n -20 node_modules/.bin/lerna exec --scope=@finos/perspective-bench -- yarn bench`);
+    }
 } catch (e) {
     process.exit(1);
 }

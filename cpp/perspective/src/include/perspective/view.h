@@ -12,13 +12,12 @@
 #include <perspective/exports.h>
 #include <perspective/base.h>
 #include <perspective/raw_types.h>
-#include <perspective/gnode.h>
-#include <perspective/pool.h>
-#include <perspective/config.h>
 #include <perspective/context_zero.h>
 #include <perspective/context_one.h>
 #include <perspective/context_two.h>
 #include <perspective/data_slice.h>
+#include <perspective/table.h>
+#include <perspective/view_config.h>
 #include <cstddef>
 #include <memory>
 #include <map>
@@ -28,10 +27,16 @@ namespace perspective {
 template <typename CTX_T>
 class PERSPECTIVE_EXPORT View {
 public:
-    View(t_pool* pool, std::shared_ptr<CTX_T> ctx, std::shared_ptr<t_gnode> gnode,
-        std::string name, std::string separator, t_config config);
-
+    View(std::shared_ptr<Table> table, std::shared_ptr<CTX_T> ctx, std::string name,
+        std::string separator, t_view_config view_config);
     ~View();
+
+    /**
+     * @brief The `t_view_config` object that created this `View`.
+     *
+     * @return t_view_config
+     */
+    t_view_config get_view_config() const;
 
     /**
      * @brief The number of pivoted sides of this View.
@@ -144,7 +149,8 @@ public:
     std::vector<t_sortspec> get_sort() const;
     std::vector<t_tscalar> get_row_path(t_uindex idx) const;
     t_stepdelta get_step_delta(t_index bidx, t_index eidx) const;
-    t_rowdelta get_row_delta(t_index bidx, t_index eidx) const;
+    std::shared_ptr<t_data_slice<CTX_T>> get_row_delta() const;
+    t_dtype get_column_dtype(t_uindex idx) const;
     bool is_column_only() const;
 
 private:
@@ -164,9 +170,8 @@ private:
     std::string _map_aggregate_types(
         const std::string& name, const std::string& typestring) const;
 
-    t_pool* m_pool;
+    std::shared_ptr<Table> m_table;
     std::shared_ptr<CTX_T> m_ctx;
-    std::shared_ptr<t_gnode> m_gnode;
     std::string m_name;
     std::string m_separator;
 
@@ -180,6 +185,6 @@ private:
     t_uindex m_row_offset;
     t_uindex m_col_offset;
 
-    t_config m_config;
+    t_view_config m_view_config;
 };
 } // end namespace perspective

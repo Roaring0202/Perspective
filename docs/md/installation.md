@@ -30,7 +30,7 @@ module.exports = {
 };
 ```
 
-Alternatively, you may use the built-in `WorkerHost` Node.js server, host
+Alternatively, you may use the built-in `WebSocketServer` Node.js server, host
 the contents of a package's `build/` in your application's build script, or
 otherwise making sure these directories are visible to your web server, e.g.:
 
@@ -42,7 +42,7 @@ cp -r node_modules/@finos/perspective/build my_build/assets/
 
 By far the easiest way to get started with Perspective in the browser, the full
 library can be used directly from
-[unpkg.com](https://unpkg.com/@finos/perspective-examples/build/perspective.view.js)
+[unpkg.com](https://unpkg.com/@finos/perspective-examples/build/perspective-viewer.js)
 CDN by simply adding these scripts to your `.html`'s `<head>` section:
 
 ```html
@@ -50,7 +50,6 @@ CDN by simply adding these scripts to your `.html`'s `<head>` section:
 <script src="https://unpkg.com/@finos/perspective-viewer"></script>
 <script src="https://unpkg.com/@finos/perspective-viewer-hypergrid"></script>
 <script src="https://unpkg.com/@finos/perspective-viewer-d3fc"></script>
-<script src="https://unpkg.com/@finos/perspective-viewer-highcharts"></script>
 ```
 
 Ultimately, for production you'll want Perspective incorporated directly into your

@@ -14,9 +14,9 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 
-    <script src="perspective.view.js"></script>
-    <script src="hypergrid.plugin.js"></script>
-    <script src="highcharts.plugin.js"></script>
+    <script src="perspective-viewer.js"></script>
+    <script src="perspective-viewer-hypergrid.js"></script>
+    <script src="perspective-viewer-d3fc.js"></script>
 
     <script src="perspective.js"></script>
 
@@ -29,7 +29,7 @@
 
     <perspective-viewer 
         id="view1"
-        view="y_area" 
+        plugin="d3_y_area" 
         row-pivots='["week_bucket(Date)"]' 
         column-pivots='["Email"]'
         columns='["Hash"]'
@@ -40,8 +40,8 @@
     <script>
         window.addEventListener('WebComponentsReady', function() {
             var elem = document.getElementById('view1');
-            var worker = perspective.worker(window.location.origin.replace('http', 'ws'));
-            elem.load(worker.open('data_source_one'));
+            var client = perspective.websocket();
+            elem.load(client.open_table('data_source_one'));
         });
     </script>
 

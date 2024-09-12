@@ -7,25 +7,27 @@
  *
  */
 
-const utils = require("@finos/perspective-viewer/test/js/utils.js");
+const utils = require("@finos/perspective-test");
 const path = require("path");
-
-const click_details = async page => {
-    const viewer = await page.$("perspective-viewer");
-
-    const click_event = page.evaluate(element => {
-        return new Promise(resolve => {
-            element.addEventListener("perspective-click", e => {
-                resolve(e.detail);
-            });
-        });
-    }, viewer);
-
-    await page.mouse.click(310, 300);
-    return await click_event;
-};
+const {click_details, capture_update} = require("./utils.js");
 
 utils.with_server({}, () => {
+    describe.page(
+        "empty.html",
+        () => {
+            test.capture("perspective-click is fired when an empty dataset is loaded first", async page => {
+                const viewer = await page.$("perspective-viewer");
+                await page.waitFor("perspective-viewer:not([updating])");
+                await capture_update(page, viewer, () => page.evaluate(element => element.update([{x: 3000}, {x: 3000}, {x: 3000}, {x: 3000}, {x: 3000}, {x: 3000}]), viewer));
+                await page.waitFor("perspective-viewer:not([updating])");
+                await page.waitFor(100);
+                const detail = await click_details(page, 30, 60);
+                expect(detail.row).toEqual({x: 3000});
+            });
+        },
+        {root: path.join(__dirname, "..", "..")}
+    );
+
     describe.page(
         "hypergrid.html",
         () => {
@@ -84,6 +86,22 @@ utils.with_server({}, () => {
                         const detail = await click_details(page);
                         expect(detail.config).toEqual({
                             filters: [["Segment", "==", "Consumer"], ["Country", "==", "United States"], ["City", "==", "Madison"], ["Region", "==", "Central"]]
+                        });
+                    });
+
+                    test.capture("perspective-click event with column-pivots clicking on the row header.", async page => {
+                        await page.waitFor(100);
+                        const viewer = await page.$("perspective-viewer");
+                        page.evaluate(element => {
+                            element.setAttribute("filters", '[["Segment", "==", "Consumer"]]');
+                            element.setAttribute("column-pivots", '["Region"]');
+                            element.setAttribute("row-pivots", '["Country", "City"]');
+                        }, viewer);
+                        await page.waitForSelector("perspective-viewer:not([updating])");
+
+                        const detail = await click_details(page, 100);
+                        expect(detail.config).toEqual({
+                            filters: [["Segment", "==", "Consumer"], ["Country", "==", "United States"], ["City", "==", "Madison"]]
                         });
                     });
                 });

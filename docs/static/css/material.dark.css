@@ -15,7 +15,7 @@
  *
  */
 @import url("https://fonts.googleapis.com/css?family=Material+Icons");
-@import url("https://fonts.googleapis.com/css?family=Open+Sans");
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,700");
 @import url("https://fonts.googleapis.com/css?family=Roboto+Mono");
 perspective-viewer {
   --interface--font-family: "Open Sans";
@@ -33,6 +33,10 @@ perspective-viewer {
   --column_type-string--color: #ff8888;
   --config_button--before: "more_vert";
   --button--font-family: "Material Icons";
+  --overflow_hint--before: "error_outline";
+  --overflow_hint--font-family: "Material Icons";
+  --overflow_hint--color: rgba(0, 0, 0, 0.2);
+  --overflow_hint--padding: 0 12px 0 6px;
   --copy_button--before: "file_copy";
   --download_button--before: "save_alt";
   --reset_button--before: "refresh";
@@ -42,6 +46,7 @@ perspective-viewer {
   --sort-order-asc--before: "arrow_upward";
   --sort-order-desc--before: "arrow_downward";
   --sort-order-none--before: "remove";
+  --close_button--before: "close";
   --sort-order-col-asc--before: "arrow_back";
   --sort-order-col-desc--before: "arrow_forward";
   --sort_order-padding: 0 0 0 0px;
@@ -62,6 +67,7 @@ perspective-viewer {
   --active-column-selector--height: 45px;
   --column_selector--width: 31px;
   --column_selector--font-size: 16px;
+  --hypergrid--color: #666;
   --hypergrid--padding: 24px;
   --side_panel--padding: 24px 24px 24px 17px;
   --button--padding: 24px 17px 0px 17px;
@@ -76,8 +82,10 @@ perspective-viewer {
   --hypergrid-header--font-size: 12px;
   --hypergrid--font-family: "Open Sans";
   --hypergrid-header--font-family: "Open Sans";
+  --d3fc-treedata-axis--lines: none;
 }
-.homeContainer {
+.homeContainer,
+#get_started {
   /******************************************************************************
  *
  * Copyright (c) 2017, the Perspective Authors.
@@ -90,7 +98,8 @@ perspective-viewer {
   @import url("https://fonts.googleapis.com/css?family=Material+Icons");
   @import url("https://fonts.googleapis.com/css?family=Roboto+Mono");
 }
-.homeContainer perspective-viewer {
+.homeContainer perspective-viewer,
+#get_started perspective-viewer {
   background-color: #2a2c2f;
   color: #cfd8dc;
   --plugin--background: #2f3136;
@@ -102,15 +111,15 @@ perspective-viewer {
   --column_type-string--color: #ff8888;
   --psp-text-field--border-color: #22a0ce;
   --button-hover--color: #22a0ce;
+  --hypergrid--color: #eee;
   --hypergrid-tree-header--background: #2f3136;
+  --hypergrid--background: #2f3136;
   --hypergrid-tree-header--color: #eee;
   --hypergrid-header--background: #2f3136;
   --hypergrid-separator--color: #eee;
   --hypergrid-header--color: #eee;
   --hypergrid-positive--color: #22a0ce;
   --hypergrid-negative--color: #ff8888;
-  --hypergrid-positive--background: #2f3136;
-  --hypergrid-negative--background: #2f3136;
   --hypergrid--font-size: 12px;
   --hypergrid-header--font-size: 12px;
   --hypergrid--font-family: "Open Sans";
@@ -124,7 +133,8 @@ perspective-viewer {
   --highcharts-grid-line--stroke: #3b3f46;
   --highcharts-tooltip--background: #2a2c2f;
   --d3fc-legend--text: #bbbbbb;
-  --d3fc-sunburst--labels: #bbbbbb;
+  --d3fc-treedata--labels: #bbbbbb;
+  --d3fc-treedata--hover-highlight: #ffffff;
   --d3fc-axis--ticks: #bbbbbb;
   --d3fc-axis--lines: #555555;
   --d3fc-tooltip--background: #333333;
@@ -140,14 +150,11 @@ perspective-viewer {
   --d3fc-series-8: #7f7f7f;
   --d3fc-series-9: #bcbd22;
   --d3fc-series-10: #17becf;
-  --d3fc-gradient-full: linear-gradient(#4d342f 0%, #e4521b 22.5%, #feeb65 42.5%, #f0f0f0 50%, #dcedc8 57.5%, #42b3d5 67.5%, #1a237e 100%);
-  --d3fc-gradient-positive: linear-gradient(#222222 0%, #1a237e 35%, #42b3d5 70%, #dcedc8 100%);
-  --d3fc-gradient-negative: linear-gradient(#feeb65 0%, #e4521b 35%, #4d342f 70%, #222222 100%);
-  --highcharts-heatmap-gradient-full: linear-gradient(#feeb65 0%, #e4521b 22.5%, #4d342f 42.5%, #222222 50%, #1a237e 57.5%, #42b3d5 67.5%, #dcedc8 100%);
-  --highcharts-heatmap-gradient-positive: linear-gradient(#222222 0%, #1a237e 35%, #42b3d5 70%, #dcedc8 100%);
-  --highcharts-heatmap-gradient-negative: linear-gradient(#feeb65 0%, #e4521b 35%, #4d342f 70%, #222222 100%);
+  --d3fc-full--gradient: linear-gradient(#feeb65 0%, #e4521b 22.5%, #4d342f 42.5%, #222222 50%, #1a237e 57.5%, #42b3d5 67.5%, #dcedc8 100%);
+  --d3fc-positive--gradient: linear-gradient(#222222 0%, #1a237e 35%, #42b3d5 70%, #dcedc8 100%);
+  --d3fc-negative--gradient: linear-gradient(#feeb65 0%, #e4521b 35%, #4d342f 70%, #222222 100%);
+  --highcharts-full--gradient: linear-gradient(#feeb65 0%, #e4521b 22.5%, #4d342f 42.5%, #222222 50%, #1a237e 57.5%, #42b3d5 67.5%, #dcedc8 100%);
+  --highcharts-positive--gradient: linear-gradient(#222222 0%, #1a237e 35%, #42b3d5 70%, #dcedc8 100%);
+  --highcharts-negative--gradient: linear-gradient(#feeb65 0%, #e4521b 35%, #4d342f 70%, #222222 100%);
   --warning--color: #333;
-}
-.homeContainer #app {
-  background-color: #2A2C2F !important;
 }

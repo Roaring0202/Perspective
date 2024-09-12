@@ -8,9 +8,7 @@
  */
 
 import "@webcomponents/webcomponentsjs";
-import "@webcomponents/shadycss/custom-style-interface.min.js";
 
-import _ from "lodash";
 import {polyfill} from "mobile-drag-drop";
 
 import {bindTemplate, json_attribute, array_attribute, copy_to_clipboard} from "./utils.js";
@@ -40,6 +38,8 @@ polyfill({});
  * @module perspective-viewer
  */
 
+const PERSISTENT_ATTRIBUTES = ["editable", "plugin", "row-pivots", "column-pivots", "aggregates", "filters", "sort", "computed-columns", "columns"];
+
 /**
  * HTMLElement class for `<perspective-viewer>` custom element.  This class is
  * not exported, so this constructor cannot be invoked in the typical manner;
@@ -66,7 +66,7 @@ class PerspectiveViewer extends ActionElement {
         this._register_debounce_instance();
         this._show_config = true;
         this._show_warnings = true;
-        this._resize_handler = _.debounce(this.notifyResize, 250).bind(this);
+        this.__render_times = [];
         window.addEventListener("load", this._resize_handler);
         window.addEventListener("resize", this._resize_handler);
     }
@@ -76,19 +76,13 @@ class PerspectiveViewer extends ActionElement {
             register_debug_plugin();
         }
 
-        this.setAttribute("settings", true);
+        this.toggleAttribute("settings", true);
 
         this._register_ids();
         this._register_callbacks();
         this._register_view_options();
         this._register_data_attribute();
         this.toggleConfig();
-
-        for (let attr of ["row-pivots", "column-pivots", "filters", "sort"]) {
-            if (!this.hasAttribute(attr)) {
-                this.setAttribute(attr, "[]");
-            }
-        }
     }
 
     /**
@@ -108,6 +102,12 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     sort(sort) {
+        if (sort === null || sort === undefined || sort.length === 0) {
+            if (this.hasAttribute("sort")) {
+                this.removeAttribute("sort");
+            }
+            sort = [];
+        }
         var inner = this._sort.querySelector("ul");
         this._update_column_list(
             sort,
@@ -145,6 +145,16 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     columns(show) {
+        if (show === null || show === undefined || show.length === 0) {
+            if (this.hasAttribute("columns")) {
+                if (this._initial_col_order) {
+                    this.setAttribute("columns", JSON.stringify(this._initial_col_order));
+                } else {
+                    this.removeAttribute("columns");
+                }
+            }
+            show = (this._initial_col_order || []).slice();
+        }
         this._update_column_view(show, true);
         this.dispatchEvent(new Event("perspective-config-update"));
         this._debounce_update();
@@ -164,6 +174,12 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     "computed-columns"(computed_columns) {
+        if (computed_columns === null || computed_columns === undefined || computed_columns.length === 0) {
+            if (this.hasAttribute("computed-columns")) {
+                this.removeAttribute("computed-columns");
+            }
+            computed_columns = [];
+        }
         const resolve = this._set_updating();
         this._computed_column._close_computed_column();
         (async () => {
@@ -203,6 +219,13 @@ class PerspectiveViewer extends ActionElement {
      */
     @json_attribute
     aggregates(show) {
+        if (show === null || show === undefined || Object.keys(show).length === 0) {
+            if (this.hasAttribute("aggregates")) {
+                this.removeAttribute("aggregates");
+            }
+            show = {};
+        }
+
         let lis = this._get_view_dom_columns();
         lis.map(x => {
             let agg = show[x.getAttribute("name")];
@@ -222,7 +245,7 @@ class PerspectiveViewer extends ActionElement {
      * config object is an array of three elements:
      *     * The column name.
      *     * The filter operation as a string.  See
-     *       {@link perspective/src/js/defaults.js}
+     *       {@link perspective/src/js/config/constants.js}
      *     * The filter argument, as a string, float or Array<string> as the
      *       filter operation demands.
      * @fires PerspectiveViewer#perspective-config-update
@@ -238,7 +261,13 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     filters(filters) {
-        if (!this._updating_filter && typeof this._table !== "undefined") {
+        if (filters === null || filters === undefined || filters.length === 0) {
+            if (this.hasAttribute("filters")) {
+                this.removeAttribute("filters");
+            }
+            filters = [];
+        }
+        if (!this._updating_filter) {
             var inner = this._filters.querySelector("ul");
             this._update_column_list(
                 filters,
@@ -269,11 +298,36 @@ class PerspectiveViewer extends ActionElement {
      * @type {string}
      * @fires PerspectiveViewer#perspective-config-update
      */
-    set view(v) {
-        this._vis_selector.value = this.getAttribute("view");
-        this._set_row_styles();
-        this._set_column_defaults();
-        this.dispatchEvent(new Event("perspective-config-update"));
+    set plugin(v) {
+        if (v === "null" || v === null || v === undefined) {
+            this.setAttribute("plugin", this._vis_selector.options[0].value);
+            return;
+        }
+
+        const plugin_names = Object.keys(renderers.getInstance());
+        if (this.hasAttribute("plugin")) {
+            let plugin = this.getAttribute("plugin");
+            if (plugin_names.indexOf(plugin) === -1) {
+                const guess_plugin = plugin_names.find(x => x.indexOf(plugin) > -1);
+                if (guess_plugin) {
+                    console.warn(`Unknown plugin "${plugin}", using "${guess_plugin}"`);
+                    this.setAttribute("plugin", guess_plugin);
+                } else {
+                    console.error(`Unknown plugin "${plugin}"`);
+                    this.setAttribute("plugin", this._vis_selector.options[0].value);
+                }
+            } else {
+                if (this._vis_selector.value !== plugin) {
+                    this._vis_selector.value = plugin;
+                    this._vis_selector_changed();
+                }
+                this._set_row_styles();
+                this._set_column_defaults();
+                this.dispatchEvent(new Event("perspective-config-update"));
+            }
+        } else {
+            this.setAttribute("plugin", this._vis_selector.options[0].value);
+        }
     }
 
     /**
@@ -285,6 +339,13 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     "column-pivots"(pivots) {
+        if (pivots === null || pivots === undefined || pivots.length === 0) {
+            if (this.hasAttribute("column-pivots")) {
+                this.removeAttribute("column-pivots");
+            }
+            pivots = [];
+        }
+
         var inner = this._column_pivots.querySelector("ul");
         this._update_column_list(pivots, inner, pivot => this._new_row(pivot));
         this.dispatchEvent(new Event("perspective-config-update"));
@@ -300,10 +361,37 @@ class PerspectiveViewer extends ActionElement {
      */
     @array_attribute
     "row-pivots"(pivots) {
+        if (pivots === null || pivots === undefined || pivots.length === 0) {
+            if (this.hasAttribute("row-pivots")) {
+                this.removeAttribute("row-pivots");
+            }
+            pivots = [];
+        }
+
         var inner = this._row_pivots.querySelector("ul");
         this._update_column_list(pivots, inner, pivot => this._new_row(pivot));
         this.dispatchEvent(new Event("perspective-config-update"));
         this._debounce_update();
+    }
+
+    /**
+     * Determines whether this viewer is editable or not (though it is
+     * ultimately up to the plugin as to whether editing is implemented).
+     *
+     * @kind member
+     * @type {boolean} Is this viewer editable?
+     * @fires PerspectiveViewer#perspective-config-update
+     */
+    set editable(x) {
+        if (x === "null") {
+            if (this.hasAttribute("editable")) {
+                this.removeAttribute("editable");
+            }
+        } else {
+            this.toggleAttribute("editable", true);
+        }
+        this._debounce_update({force_update: true});
+        this.dispatchEvent(new Event("perspective-config-update"));
     }
 
     /**
@@ -369,7 +457,7 @@ class PerspectiveViewer extends ActionElement {
             data = data.trim();
         } catch (e) {}
         let table;
-        if (data.hasOwnProperty("_name")) {
+        if (data.hasOwnProperty("_name") && data.type === "table") {
             table = data;
         } else {
             table = this.worker.table(data, options);
@@ -418,9 +506,6 @@ class PerspectiveViewer extends ActionElement {
      * @param {any} widget A `<perspective-viewer>` instance to clone.
      */
     clone(widget) {
-        if (widget.hasAttribute("index")) {
-            this.setAttribute("index", widget.getAttribute("index"));
-        }
         if (this._inner_drop_target) {
             this._inner_drop_target.innerHTML = widget._inner_drop_target.innerHTML;
         }
@@ -463,11 +548,22 @@ class PerspectiveViewer extends ActionElement {
      */
     save() {
         let obj = {};
+        const cols = new Set(PERSISTENT_ATTRIBUTES);
         for (let key = 0; key < this.attributes.length; key++) {
             let attr = this.attributes[key];
-            if (["id"].indexOf(attr.name) === -1) {
-                obj[attr.name] = attr.value;
+            if (cols.has(attr.name)) {
+                if (attr.value === "") {
+                    obj[attr.name] = true;
+                } else if (attr.name !== "plugin" && attr.value !== undefined && attr.value !== null) {
+                    obj[attr.name] = JSON.parse(attr.value);
+                } else {
+                    obj[attr.name] = attr.value;
+                }
+                cols.delete(attr.name);
             }
+        }
+        for (const col of cols) {
+            obj[col] = null;
         }
         if (this._plugin.save) {
             obj.plugin_config = this._plugin.save.call(this);
@@ -477,22 +573,34 @@ class PerspectiveViewer extends ActionElement {
 
     /**
      * Restore this element to a state as generated by a reciprocal call to
-     * `save`.
+     * `save` or `serialize`.
      *
-     * @param {object} x returned by `save`.
+     * @param {object|string} config returned by `save` or `serialize`.
      * @returns {Promise<void>} A promise which resolves when the changes have
      * been applied.
      */
-    async restore(x) {
-        for (let key in x) {
-            let val = x[key];
-            if (typeof val !== "string") {
-                val = JSON.stringify(val);
-            }
-            this.setAttribute(key, val);
+    async restore(config) {
+        if (typeof config === "string") {
+            config = JSON.parse(config);
         }
-        if (this._plugin.restore && x.plugin_config) {
-            this._plugin.restore.call(this, x.plugin_config);
+        for (const key of PERSISTENT_ATTRIBUTES) {
+            if (config.hasOwnProperty(key)) {
+                let val = config[key];
+                if (val === true) {
+                    this.toggleAttribute(key, true);
+                } else if (val !== undefined && val !== null && val !== false) {
+                    if (typeof val !== "string") {
+                        val = JSON.stringify(val);
+                    }
+                    this.setAttribute(key, val);
+                } else {
+                    this.removeAttribute(key);
+                }
+            }
+        }
+
+        if (this._plugin.restore && config.plugin_config) {
+            this._plugin.restore.call(this, config.plugin_config);
         }
         await this._debounce_update();
     }
@@ -531,17 +639,16 @@ class PerspectiveViewer extends ActionElement {
      *
      */
     reset() {
-        this.setAttribute("row-pivots", JSON.stringify([]));
-        this.setAttribute("column-pivots", JSON.stringify([]));
-        this.setAttribute("filters", JSON.stringify([]));
-        this.setAttribute("sort", JSON.stringify([]));
-        this.removeAttribute("index");
+        this.removeAttribute("row-pivots");
+        this.removeAttribute("column-pivots");
+        this.removeAttribute("filters");
+        this.removeAttribute("sort");
         if (this._initial_col_order) {
-            this.setAttribute("columns", JSON.stringify(this._initial_col_order || []));
+            this.setAttribute("columns", JSON.stringify(this._initial_col_order));
         } else {
             this.removeAttribute("columns");
         }
-        this.setAttribute("view", Object.keys(renderers.getInstance())[0]);
+        this.setAttribute("plugin", Object.keys(renderers.getInstance())[0]);
         this.dispatchEvent(new Event("perspective-config-update"));
         this._hide_context_menu();
     }

@@ -14,15 +14,17 @@ perspective::t_index get_column_count() const;
 std::vector<t_tscalar> get_data(
     t_index start_row, t_index end_row, t_index start_col, t_index end_col) const;
 
+std::vector<t_tscalar> get_data(const std::vector<t_uindex>& rows) const;
+
 void sort_by(const std::vector<t_sortspec>& sortby);
 
 void reset_sortby();
 
 // will only work on empty contexts
-void notify(const t_table& flattened);
+void notify(const t_data_table& flattened);
 
-void notify(const t_table& flattened, const t_table& delta, const t_table& prev,
-    const t_table& current, const t_table& transitions, const t_table& existed);
+void notify(const t_data_table& flattened, const t_data_table& delta, const t_data_table& prev,
+    const t_data_table& current, const t_data_table& transitions, const t_data_table& existed);
 
 void step_begin();
 
@@ -55,7 +57,9 @@ std::vector<t_minmax> get_min_max() const;
 
 t_stepdelta get_step_delta(t_index bidx, t_index eidx);
 
-t_rowdelta get_row_delta(t_index bidx, t_index eidx);
+t_rowdelta get_row_delta();
+
+std::vector<t_uindex> get_rows_changed();
 
 std::vector<t_cellupd> get_cell_delta(t_index bidx, t_index eidx) const;
 
@@ -75,7 +79,7 @@ void pprint() const;
 
 t_dtype get_column_dtype(t_uindex idx) const;
 
-std::shared_ptr<t_table> get_table() const;
+std::shared_ptr<t_data_table> get_table() const;
 
 // Unity api
 std::vector<t_tscalar> unity_get_row_data(t_uindex idx) const;
@@ -90,7 +94,7 @@ std::string unity_get_column_name(t_uindex idx) const;
 std::string unity_get_column_display_name(t_uindex idx) const;
 t_uindex unity_get_column_count() const;
 t_uindex unity_get_row_count() const;
-t_table unity_get_table() const;
+t_data_table unity_get_table() const;
 bool unity_get_row_expanded(t_uindex idx) const;
 bool unity_get_column_expanded(t_uindex idx) const;
 void unity_init_load_step_end();

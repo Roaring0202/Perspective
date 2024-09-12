@@ -9,6 +9,7 @@
 
 function toValue(type, value) {
     switch (type) {
+        case "date":
         case "datetime":
             return value instanceof Date ? value : new Date(parseInt(value));
         case "integer":
@@ -37,7 +38,7 @@ export function getDataValues(data, settings) {
             return [
                 {
                     name: data.key,
-                    value: data.mainValue
+                    value: data.mainValue - (data.baseValue || 0)
                 }
             ];
         }

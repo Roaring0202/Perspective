@@ -17,17 +17,17 @@ const siteConfig = {
 
     headerLinks: [
         {doc: "md/installation", label: "Docs"},
-        {doc: "obj/perspective-viewer", label: "API"},
+        // {doc: "obj/perspective-viewer-site", label: "API"},
         {blog: true, label: "Blog"},
         {href: "https://github.com/finos/perspective/", label: "GitHub"}
     ],
 
-    headerIcon: "img/perspective2.svg",
-    footerIcon: "img/perspective2.svg",
+    //headerIcon: "img/perspective2.svg",
+    // footerIcon: "img/perspective2.svg",
     favicon: "img/favicon.png",
 
     colors: {
-        primaryColor: "#242526",
+        primaryColor: "#1A7DA1",
         secondaryColor: "#1A7DA1"
     },
 
@@ -39,10 +39,10 @@ const siteConfig = {
 
     scripts: [
         "https://buttons.github.io/buttons.js",
-        "https://unpkg.com/@finos/perspective/build/perspective.js",
-        "https://unpkg.com/@finos/perspective-viewer/build/perspective.view.js",
-        "https://unpkg.com/@finos/perspective-viewer-hypergrid/build/hypergrid.plugin.js",
-        "https://unpkg.com/@finos/perspective-viewer-highcharts/build/highcharts.plugin.js",
+        "https://unpkg.com/@finos/perspective/dist/umd/perspective.js",
+        "https://unpkg.com/@finos/perspective-viewer/dist/umd/perspective-viewer.js",
+        "https://unpkg.com/@finos/perspective-viewer-hypergrid/dist/umd/perspective-viewer-hypergrid.js",
+        "https://unpkg.com/@finos/perspective-viewer-d3fc/dist/umd/perspective-viewer-d3fc.js",
         "js/animation.js"
     ],
 
@@ -50,8 +50,7 @@ const siteConfig = {
         "https://fonts.googleapis.com/css?family=Montserrat:300",
         "https://fonts.googleapis.com/css?family=Material+Icons",
         "https://fonts.googleapis.com/css?family=Open+Sans",
-        "https://fonts.googleapis.com/css?family=Roboto+Mono",
-        "css/material.dark.css"
+        "https://fonts.googleapis.com/css?family=Roboto+Mono"
     ],
 
     onPageNav: "separate",

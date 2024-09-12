@@ -13,29 +13,21 @@
 
 namespace perspective {
 template <typename CTX_T>
-View<CTX_T>::View(t_pool* pool, std::shared_ptr<CTX_T> ctx, std::shared_ptr<t_gnode> gnode,
-    std::string name, std::string separator, t_config config)
-    : m_pool(pool)
+View<CTX_T>::View(std::shared_ptr<Table> table, std::shared_ptr<CTX_T> ctx, std::string name,
+    std::string separator, t_view_config view_config)
+    : m_table(table)
     , m_ctx(ctx)
-    , m_gnode(gnode)
-    , m_name(name)
-    , m_separator(separator)
+    , m_name(std::move(name))
+    , m_separator(std::move(separator))
     , m_col_offset(0)
-    , m_config(config) {
+    , m_view_config(std::move(view_config)) {
 
-    // We should deprecate t_pivot and just use string column names throughout
-    for (const t_pivot& rp : m_config.get_row_pivots()) {
-        m_row_pivots.push_back(rp.name());
-    }
-
-    for (const t_pivot& cp : m_config.get_column_pivots()) {
-        m_column_pivots.push_back(cp.name());
-    }
-
-    m_aggregates = m_config.get_aggregates();
-    m_columns = m_config.get_column_names();
-    m_filter = m_config.get_fterms();
-    m_sort = m_config.get_sortspecs();
+    m_row_pivots = m_view_config.get_row_pivots();
+    m_column_pivots = m_view_config.get_column_pivots();
+    m_aggregates = m_view_config.get_aggspecs();
+    m_columns = m_view_config.get_columns();
+    m_filter = m_view_config.get_fterm();
+    m_sort = m_view_config.get_sortspec();
 
     // configure data window for column-only rows
     is_column_only() ? m_row_offset = 1 : m_row_offset = 0;
@@ -43,7 +35,15 @@ View<CTX_T>::View(t_pool* pool, std::shared_ptr<CTX_T> ctx, std::shared_ptr<t_gn
 
 template <typename CTX_T>
 View<CTX_T>::~View() {
-    m_pool->unregister_context(m_gnode->get_id(), m_name);
+    auto pool = m_table->get_pool();
+    auto gnode = m_table->get_gnode();
+    pool->unregister_context(gnode->get_id(), m_name);
+}
+
+template <typename CTX_T>
+t_view_config
+View<CTX_T>::get_view_config() const {
+    return m_view_config;
 }
 
 template <>
@@ -160,7 +160,7 @@ View<t_ctx0>::column_names(bool skip, std::int32_t depth) const {
 template <typename CTX_T>
 std::map<std::string, std::string>
 View<CTX_T>::schema() const {
-    auto schema = m_gnode->get_tblschema();
+    auto schema = m_table->get_schema();
     auto _types = schema.types();
     auto names = schema.columns();
 
@@ -189,7 +189,7 @@ View<CTX_T>::schema() const {
 template <>
 std::map<std::string, std::string>
 View<t_ctx0>::schema() const {
-    t_schema schema = m_gnode->get_tblschema();
+    t_schema schema = m_table->get_schema();
     std::vector<t_dtype> _types = schema.types();
     std::vector<std::string> names = schema.columns();
 
@@ -216,11 +216,10 @@ template <>
 std::shared_ptr<t_data_slice<t_ctx0>>
 View<t_ctx0>::get_data(
     t_uindex start_row, t_uindex end_row, t_uindex start_col, t_uindex end_col) {
-    auto slice_ptr = std::make_shared<std::vector<t_tscalar>>(
-        m_ctx->get_data(start_row, end_row, start_col, end_col));
+    std::vector<t_tscalar> slice = m_ctx->get_data(start_row, end_row, start_col, end_col);
     auto col_names = column_names();
     auto data_slice_ptr = std::make_shared<t_data_slice<t_ctx0>>(m_ctx, start_row, end_row,
-        start_col, end_col, m_row_offset, m_col_offset, slice_ptr, col_names);
+        start_col, end_col, m_row_offset, m_col_offset, slice, col_names);
     return data_slice_ptr;
 }
 
@@ -228,14 +227,13 @@ template <>
 std::shared_ptr<t_data_slice<t_ctx1>>
 View<t_ctx1>::get_data(
     t_uindex start_row, t_uindex end_row, t_uindex start_col, t_uindex end_col) {
-    auto slice_ptr = std::make_shared<std::vector<t_tscalar>>(
-        m_ctx->get_data(start_row, end_row, start_col, end_col));
+    std::vector<t_tscalar> slice = m_ctx->get_data(start_row, end_row, start_col, end_col);
     auto col_names = column_names();
     t_tscalar row_path;
     row_path.set("__ROW_PATH__");
     col_names.insert(col_names.begin(), std::vector<t_tscalar>{row_path});
     auto data_slice_ptr = std::make_shared<t_data_slice<t_ctx1>>(m_ctx, start_row, end_row,
-        start_col, end_col, m_row_offset, m_col_offset, slice_ptr, col_names);
+        start_col, end_col, m_row_offset, m_col_offset, slice, col_names);
     return data_slice_ptr;
 }
 
@@ -293,9 +291,8 @@ View<t_ctx2>::get_data(
     t_tscalar row_path;
     row_path.set("__ROW_PATH__");
     cols.insert(cols.begin(), std::vector<t_tscalar>{row_path});
-    auto slice_ptr = std::make_shared<std::vector<t_tscalar>>(slice);
     auto data_slice_ptr = std::make_shared<t_data_slice<t_ctx2>>(m_ctx, start_row, end_row,
-        start_col, end_col, m_row_offset, m_col_offset, slice_ptr, cols, column_indices);
+        start_col, end_col, m_row_offset, m_col_offset, slice, cols, column_indices);
     return data_slice_ptr;
 }
 
@@ -449,15 +446,25 @@ View<CTX_T>::get_step_delta(t_index bidx, t_index eidx) const {
 }
 
 template <typename CTX_T>
-t_rowdelta
-View<CTX_T>::get_row_delta(t_index bidx, t_index eidx) const {
-    return m_ctx->get_row_delta(bidx, eidx);
+std::shared_ptr<t_data_slice<CTX_T>>
+View<CTX_T>::get_row_delta() const {
+    t_rowdelta delta = m_ctx->get_row_delta();
+    const std::vector<t_tscalar>& data = delta.data;
+    t_uindex num_rows_changed = delta.num_rows_changed;
+    auto data_slice_ptr = std::make_shared<t_data_slice<CTX_T>>(m_ctx, data, num_rows_changed);
+    return data_slice_ptr;
+}
+
+template <typename CTX_T>
+t_dtype
+View<CTX_T>::get_column_dtype(t_uindex idx) const {
+    return m_ctx->get_column_dtype(idx);
 }
 
 template <typename CTX_T>
 bool
 View<CTX_T>::is_column_only() const {
-    return m_config.is_column_only();
+    return m_view_config.is_column_only();
 }
 
 /******************************************************************************
@@ -465,39 +472,26 @@ View<CTX_T>::is_column_only() const {
  * Private
  */
 
-/* template <typename CTX_T>
-std::int32_t
-View<CTX_T>::_num_hidden_cols() {
-    std::int32_t hidden = 0;
-    for (const t_sortspec& sort : m_sort) {
-    }
-    return hidden;
-} */
-
 template <typename CTX_T>
 std::string
 View<CTX_T>::_map_aggregate_types(
     const std::string& name, const std::string& typestring) const {
-    std::vector<std::string> INTEGER_AGGS
-        = {"distinct_count", "distinct count", "distinctcount", "distinct", "count"};
-    std::vector<std::string> FLOAT_AGGS
-        = {"avg", "mean", "mean by count", "mean_by_count", "weighted mean", "weighted_mean",
-            "pct sum parent", "pct_sum_parent", "pct sum grand total", "pct_sum_grand_total"};
 
     for (const t_aggspec& agg : m_aggregates) {
         if (agg.name() == name) {
-            std::string agg_str = agg.agg_str();
-            bool int_agg = std::find(INTEGER_AGGS.begin(), INTEGER_AGGS.end(), agg_str)
-                != INTEGER_AGGS.end();
-            bool float_agg
-                = std::find(FLOAT_AGGS.begin(), FLOAT_AGGS.end(), agg_str) != FLOAT_AGGS.end();
-
-            if (int_agg) {
-                return "integer";
-            } else if (float_agg) {
-                return "float";
-            } else {
-                return typestring;
+            switch (agg.agg()) {
+                case AGGTYPE_DISTINCT_COUNT:
+                case AGGTYPE_COUNT: {
+                    return "integer";
+                } break;
+                case AGGTYPE_MEAN:
+                case AGGTYPE_MEAN_BY_COUNT:
+                case AGGTYPE_WEIGHTED_MEAN:
+                case AGGTYPE_PCT_SUM_PARENT:
+                case AGGTYPE_PCT_SUM_GRAND_TOTAL: {
+                    return "float";
+                } break;
+                default: { return typestring; } break;
             }
         }
     }

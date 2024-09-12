@@ -1,5 +1,87 @@
 # Changelog
 
+[0.3.9] - 2019-09-16
+### Added
+* [#698](https://github.com/jpmorganchase/perspective/pull/698) Support for updating-by & querying implicitly indexed `table`s via `"__INDEX__"`.
+* [#699](https://github.com/jpmorganchase/perspective/pull/699) Adds `leaves_only` option for `to_*` methods.
+* [#700](https://github.com/jpmorganchase/perspective/pull/700) Charts now display the first-N point on overflow, rather than only warn.
+* [#715](https://github.com/jpmorganchase/perspective/pull/715) Editing support via the `editable` attribute, for `@finos/perspective-viewer-hypergrid`.
+  
+### Fixes
+* [#691](https://github.com/jpmorganchase/perspective/pull/691) Fix for reading batched arrows.
+* [#702](https://github.com/jpmorganchase/perspective/pull/702) Fix compatibility with ipywidgets.
+* [#703](https://github.com/jpmorganchase/perspective/pull/703) Fix attribtue API to be less noisy.
+* [#718](https://github.com/jpmorganchase/perspective/pull/718) Updated ES6 compat to remove regenerator dependency.
+
+### Internal
+* [#725](https://github.com/jpmorganchase/perspective/pull/725) `yarn setup` task for dev.
+
+[0.3.8] - 2019-08-26
+### Fixes
+* [#689](https://github.com/jpmorganchase/perspective/pull/689) Performance enchancements for `update()`.
+* [#690](https://github.com/jpmorganchase/perspective/pull/690) Ported to `llvm-upstream` branch fo Emscripten.
+
+[0.3.7] - 2019-08-20
+### Added
+* [#676](https://github.com/jpmorganchase/perspective/pull/676) Added null-filtering API and UI.
+* [#682](https://github.com/jpmorganchase/perspective/pull/676) Added type-specific styling API, with additional style properties for `@finos/perspective-viewer-hypergrid`.
+
+### Fixes
+* [#663](https://github.com/jpmorganchase/perspective/pull/663) Allow Apache Arrow inputs to optionally declare a schema.
+* [#666](https://github.com/jpmorganchase/perspective/pull/666) Fixed `@finos/persoective-viewer` aggregate persistence for computed columns.
+* [#669](https://github.com/jpmorganchase/perspective/pull/669) Fixed `@finos/persoective-viewer` filtering on null values.
+* [#675](https://github.com/jpmorganchase/perspective/pull/675) Fixed `@finos/persoective-jupyterlab` publish versioning.
+* [#672](https://github.com/jpmorganchase/perspective/pull/672) Fixed config parsing.
+* [#683](https://github.com/jpmorganchase/perspective/pull/683) Fixed D3FC version regression
+* [#684](https://github.com/jpmorganchase/perspective/pull/684) Fixed scatter chart click events.
+* [#685](https://github.com/jpmorganchase/perspective/pull/685) Fixed config performance issue.
+* [#686](https://github.com/jpmorganchase/perspective/pull/686) Fixed `@finos/persoective-viewer-hypergrid` click propagation issue.
+  
+[0.3.6] - 2019-07-15
+### Fixes
+* [#660](https://github.com/jpmorganchase/perspective/pull/660) Fixed webpack path resolution bug.
+  
+[0.3.5] - 2019-07-14
+### Added
+* [#644](https://github.com/jpmorganchase/perspective/pull/644) Global project config via `perspective.config.js`
+* [#639](https://github.com/jpmorganchase/perspective/pull/629) New perspective-viewer API.
+* [#641](https://github.com/jpmorganchase/perspective/pull/641) Simplified `@finos/perspective-webpack-plugin`.
+* [#650](https://github.com/jpmorganchase/perspective/pull/650) Resizable panels for `@finos/perspective-viewer`.
+  
+### Fixes
+* [#634](https://github.com/jpmorganchase/perspective/pull/634) Fixed node.js async load error.
+* [#635](https://github.com/jpmorganchase/perspective/pull/635) Fixed issue with multiple web workers.
+* [#649](https://github.com/jpmorganchase/perspective/pull/649) Fixed click event bug in `@finos/perspective-viewer-hypergrid`.
+* [#651](https://github.com/jpmorganchase/perspective/pull/651) Fixed issue pivotting on `null` values.
+
+[0.3.1] - 2019-06-25
+### Added
+* [#629](https://github.com/jpmorganchase/perspective/pull/629) asm.js/IE support removed.
+
+### Fixes
+* [#628](https://github.com/jpmorganchase/perspective/pull/628) Better memory utilization.
+* [#625](https://github.com/jpmorganchase/perspective/pull/625) Fixes to `perspective-phosphor`.
+
+[0.3.0] - 2019-06-02
+### Added
+* [#558](https://github.com/jpmorganchase/perspective/pull/558) `@jpmorganchase/perspective*` is now `@finos/perspective*`.
+* [#599](https://github.com/jpmorganchase/perspective/pull/599) `perspective-viewer-d3fc` is the default chart plugin.
+* [#574](https://github.com/jpmorganchase/perspective/pull/574) Auto-conflation of messages for `table()`.  `update()` and `on_update()` calls are no longer 1:1, but overall update throughput has been greatly increased.
+* [#589](https://github.com/jpmorganchase/perspective/pull/589) `on_update()` method now returns Apache Arrow with `mode: "row"` option, enabling full Arrow server->client real-time streaming.
+* [#563](https://github.com/jpmorganchase/perspective/pull/563) Treemaps added to `perspective-viewer-d3fc`.
+* [#564](https://github.com/jpmorganchase/perspective/pull/564) Dual-axis support added to `perspective-viewer-d3fc` line charts.
+* [#581](https://github.com/jpmorganchase/perspective/pull/581) Dual-axis support added to `perspective-viewer-d3fc` area, scatter and column charts.
+* [#553](https://github.com/jpmorganchase/perspective/pull/553) Added `style_element()` method to `<perspective-viewer>` to refresh styles when CSS is updated.
+* [#557](https://github.com/jpmorganchase/perspective/pull/557) Category filters on `<perspective-viewer>` now auto-select and auto-focus.
+
+### Fixes
+* [#561](https://github.com/jpmorganchase/perspective/pull/561) Handle `boolean` columns in Apache Arrow correctly.
+* [#580](https://github.com/jpmorganchase/perspective/pull/580) Better responsive layout for narrow `<perspective-viewer>`s.
+
+### Internal
+* [#587](https://github.com/jpmorganchase/perspective/pull/587) Port to Webpack 4.
+* [#588](https://github.com/jpmorganchase/perspective/pull/588) new stand-alone benchmarking tool `perspective-bench`.
+
 # [0.2.23] - 2019-04-22
 ### Added
 * [#547](https://github.com/jpmorganchase/perspective/pull/547) Added `to_arrow()` support to remote perspective, as well as ability to host `view()`s in addition to `table()`s.

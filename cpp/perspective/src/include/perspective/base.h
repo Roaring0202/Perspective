@@ -61,7 +61,7 @@ const t_index INVALID_INDEX = -1;
 #define CHAR_BIT 8
 #endif
 
-PERSPECTIVE_EXPORT void psp_abort();
+PERSPECTIVE_EXPORT void psp_abort(const std::string& message);
 
 //#define PSP_TRACE_SENTINEL() t_trace _psp_trace_sentinel;
 #define PSP_TRACE_SENTINEL()
@@ -77,7 +77,7 @@ PERSPECTIVE_EXPORT void psp_abort();
             ss << __FILE__ << ":" << __LINE__ << ": " << MSG << " : "                          \
                << perspective::get_error_str();                                                \
             perror(ss.str().c_str());                                                          \
-            psp_abort();                                                                       \
+            psp_abort("Verbose assert failed!");                                                \
         }                                                                                      \
     }
 
@@ -88,7 +88,7 @@ PERSPECTIVE_EXPORT void psp_abort();
             ss << __FILE__ << ":" << __LINE__ << ": " << MSG << " : "                          \
                << perspective::get_error_str();                                                \
             perror(ss.str().c_str());                                                          \
-            psp_abort();                                                                       \
+            psp_abort("Verbose assert failed!");                                               \
         }                                                                                      \
     }
 
@@ -97,7 +97,7 @@ PERSPECTIVE_EXPORT void psp_abort();
         std::stringstream ss;                                                                  \
         ss << __FILE__ << ":" << __LINE__ << ": " << X;                                        \
         perror(ss.str().c_str());                                                              \
-        psp_abort();                                                                           \
+        psp_abort(X);                                                                          \
     }
 
 #define PSP_ASSERT_SIMPLE_TYPE(X)                                                              \
@@ -126,14 +126,14 @@ std::is_pod<X>::value && std::is_standard_layout<X>::value , \
 #define PSP_VERBOSE_ASSERT1(COND, MSG)                                                         \
     {                                                                                          \
         if (!(COND))                                                                           \
-            psp_abort();                                                                       \
+            psp_abort("Assertion failed!");                                                    \
     }
 #define PSP_VERBOSE_ASSERT2(EXPR, COND, MSG)                                                   \
     {                                                                                          \
         if (!(EXPR COND))                                                                      \
-            psp_abort();                                                                       \
+            psp_abort("Assertion failed!");                                                    \
     }
-#define PSP_COMPLAIN_AND_ABORT(X) psp_abort();
+#define PSP_COMPLAIN_AND_ABORT(X) psp_abort(X);
 #define PSP_ASSERT_SIMPLE_TYPE(X)
 #define LOG_CONSTRUCTOR(X)
 #define LOG_DESTRUCTOR(X)
@@ -183,14 +183,12 @@ enum t_filter_op {
     FILTER_OP_IN,
     FILTER_OP_NOT_IN,
     FILTER_OP_AND,
-    FILTER_OP_IS_NAN,
-    FILTER_OP_IS_NOT_NAN,
-    FILTER_OP_IS_VALID,
-    FILTER_OP_IS_NOT_VALID
+    FILTER_OP_IS_NULL,
+    FILTER_OP_IS_NOT_NULL
 };
 
 PERSPECTIVE_EXPORT std::string filter_op_to_str(t_filter_op op);
-PERSPECTIVE_EXPORT t_filter_op str_to_filter_op(std::string str);
+PERSPECTIVE_EXPORT t_filter_op str_to_filter_op(const std::string& str);
 
 enum t_header { HEADER_ROW, HEADER_COLUMN };
 
@@ -202,7 +200,7 @@ enum t_sorttype {
     SORTTYPE_DESCENDING_ABS
 };
 
-PERSPECTIVE_EXPORT t_sorttype str_to_sorttype(std::string str);
+PERSPECTIVE_EXPORT t_sorttype str_to_sorttype(const std::string& str);
 PERSPECTIVE_EXPORT std::string sorttype_to_str(t_sorttype type);
 
 enum t_aggtype {
@@ -239,7 +237,7 @@ enum t_aggtype {
     AGGTYPE_PCT_SUM_GRAND_TOTAL
 };
 
-PERSPECTIVE_EXPORT t_aggtype str_to_aggtype(std::string str);
+PERSPECTIVE_EXPORT t_aggtype str_to_aggtype(const std::string& str);
 PERSPECTIVE_EXPORT t_aggtype _get_default_aggregate(t_dtype dtype);
 PERSPECTIVE_EXPORT std::string _get_default_aggregate_string(t_dtype dtype);
 
@@ -278,7 +276,6 @@ enum t_value_transition {
 
 enum t_gnode_type {
     GNODE_TYPE_PKEYED,         // Explicit user set pkey
-    GNODE_TYPE_IMPLICIT_PKEYED // pkey is row based
 };
 
 enum t_gnode_port {
@@ -367,6 +364,7 @@ PERSPECTIVE_EXPORT bool is_floating_point(t_dtype dtype);
 PERSPECTIVE_EXPORT bool is_linear_order_type(t_dtype dtype);
 PERSPECTIVE_EXPORT std::string get_dtype_descr(t_dtype dtype);
 PERSPECTIVE_EXPORT std::string dtype_to_str(t_dtype dtype);
+PERSPECTIVE_EXPORT t_dtype str_to_dtype(const std::string& typestring);
 PERSPECTIVE_EXPORT std::string get_status_descr(t_status dtype);
 PERSPECTIVE_EXPORT t_uindex get_dtype_size(t_dtype dtype);
 PERSPECTIVE_EXPORT bool is_vlen_dtype(t_dtype dtype);

@@ -90,20 +90,9 @@ t_gnode::t_gnode(const t_gnode_options& options)
     }
 
     t_schema port_schema(options.m_port_schema);
-    if (m_gnode_type == GNODE_TYPE_IMPLICIT_PKEYED) {
-
-        // Make sure that gnode type is consistent with input schema
-        if (port_schema.is_pkey()) {
-            PSP_COMPLAIN_AND_ABORT("gnode type specified as implicit pkey, however input "
-                                   "schema has psp_pkey column.");
-        }
-        port_schema
-            = t_schema{{"psp_op", "psp_pkey"}, {DTYPE_UINT8, DTYPE_INT64}} + port_schema;
-    } else {
-        if (!(port_schema.is_pkey())) {
-            PSP_COMPLAIN_AND_ABORT("gnode type specified as explicit pkey, however input "
-                                   "schema is missing required columns.");
-        }
+    if (!(port_schema.is_pkey())) {
+        PSP_COMPLAIN_AND_ABORT("gnode type specified as explicit pkey, however input "
+                                "schema is missing required columns.");
     }
 
     t_schema trans_schema(m_tblschema.columns(), trans_types);
@@ -207,7 +196,7 @@ t_gnode::init() {
     }
 
     std::shared_ptr<t_port>& iport = m_iports[0];
-    std::shared_ptr<t_table> flattened = iport->get_table()->flatten();
+    std::shared_ptr<t_data_table> flattened = iport->get_table()->flatten();
     m_init = true;
 }
 
@@ -219,7 +208,7 @@ t_gnode::repr() const {
 }
 
 void
-t_gnode::_send(t_uindex portid, const t_table& fragments) {
+t_gnode::_send(t_uindex portid, const t_data_table& fragments) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     PSP_VERBOSE_ASSERT(portid == 0, "Only simple dataflows supported currently");
@@ -229,7 +218,13 @@ t_gnode::_send(t_uindex portid, const t_table& fragments) {
 }
 
 void
-t_gnode::_send_and_process(const t_table& fragments) {
+t_gnode::_send(t_uindex portid, const t_data_table& fragments, const std::vector<t_computed_column_def>& computed_lambdas) { 
+    _send(portid, fragments);
+    append_computed_lambdas(computed_lambdas);
+}
+
+void
+t_gnode::_send_and_process(const t_data_table& fragments) {
     _send(0, fragments);
     _process();
 }
@@ -270,7 +265,7 @@ t_gnode::calc_transition(bool prev_existed, bool row_pre_existed, bool exists, b
 
 void
 t_gnode::populate_icols_in_flattened(
-    const std::vector<t_rlookup>& lkup, std::shared_ptr<t_table>& flat) const {
+    const std::vector<t_rlookup>& lkup, std::shared_ptr<t_data_table>& flat) const {
     PSP_VERBOSE_ASSERT(lkup.size() == flat->size(), "Mismatched sizes encountered");
 
     t_uindex nrows = lkup.size();
@@ -281,7 +276,7 @@ t_gnode::populate_icols_in_flattened(
     std::vector<std::string> cnames(ncols);
 
     t_uindex count = 0;
-    const t_table* stable = get_table();
+    const t_data_table* stable = get_table();
 
     for (const auto& cname : m_expr_icols) {
         icols[count] = stable->get_const_column(cname).get();
@@ -337,110 +332,79 @@ t_gnode::clear_deltas() {
     }
 }
 
-void
-t_gnode::_process() {
-    PSP_TRACE_SENTINEL();
-    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+std::shared_ptr<t_data_table>
+t_gnode::_process_table() {
     m_was_updated = false;
-    PSP_VERBOSE_ASSERT(
-        m_mode == NODE_PROCESSING_SIMPLE_DATAFLOW, "Only simple dataflows supported currently");
-    psp_log_time(repr() + " _process.enter");
-    auto t1 = std::chrono::high_resolution_clock::now();
 
     std::shared_ptr<t_port>& iport = m_iports[0];
 
     if (iport->get_table()->size() == 0) {
-        return;
+        return nullptr;
     }
 
     m_was_updated = true;
+    std::shared_ptr<t_data_table> flattened(iport->get_table()->flatten());
 
-    if (m_gnode_type == GNODE_TYPE_IMPLICIT_PKEYED) {
-        auto tbl = iport->get_table();
-        auto op_col = tbl->add_column("psp_op", DTYPE_UINT8, false);
-        op_col->raw_fill<std::uint8_t>(OP_INSERT);
-
-        auto key_col = tbl->add_column("psp_pkey", DTYPE_INT64, true);
-        std::int64_t start = get_table()->size();
-        for (t_uindex ridx = 0; ridx < tbl->size(); ++ridx) {
-            key_col->set_nth<std::int64_t>(ridx, start + ridx);
-        }
-    }
-
-    std::shared_ptr<t_table> flattened(iport->get_table()->flatten());
     PSP_GNODE_VERIFY_TABLE(flattened);
     PSP_GNODE_VERIFY_TABLE(get_table());
 
-    psp_log_time(repr() + " _process.post_flatten");
+    const t_gstate& cstate = *(m_state.get());
+    t_uindex fnrows = flattened->num_rows();
 
-    if (t_env::log_data_gnode_flattened()) {
-        std::cout << repr() << "gnode_process_flattened" << std::endl;
-        flattened->pprint();
+    std::vector<t_rlookup> lkup(fnrows);
+    t_column* pkey_col = flattened->get_column("psp_pkey").get();
+    
+    for (t_uindex idx = 0; idx < fnrows; ++idx) {
+        t_tscalar pkey = pkey_col->get_scalar(idx);
+        lkup[idx] = cstate.lookup(pkey);
     }
-
-    if (t_env::log_schema_gnode_flattened()) {
-        std::cout << repr() << "gnode_schema_flattened" << std::endl;
-        std::cout << flattened->get_schema();
-    }
+    recompute_columns(get_table_sptr(), flattened, lkup);
 
     if (m_state->mapping_size() == 0) {
-        psp_log_time(repr() + " _process.init_path.post_fill_expr");
-
         m_state->update_history(flattened.get());
-        psp_log_time(repr() + " _process.init_path.post_update_history");
         _update_contexts_from_state(*flattened);
-        psp_log_time(repr() + " _process.init_path.post_update_contexts_from_state");
         m_oports[PSP_PORT_FLATTENED]->set_table(flattened);
-
         release_inputs();
-        psp_log_time(repr() + " _process.init_path.post_release_inputs");
-
         release_outputs();
-        psp_log_time(repr() + " _process.init_path.exit");
-
+        
 #ifdef PSP_GNODE_VERIFY
         auto stable = get_table();
         PSP_GNODE_VERIFY_TABLE(stable);
 #endif
 
-        return;
+        return nullptr;
     }
 
     for (t_uindex idx = 0, loop_end = m_iports.size(); idx < loop_end; ++idx) {
         m_iports[idx]->release_or_clear();
     }
 
-    t_uindex fnrows = flattened->num_rows();
-
-    std::shared_ptr<t_table> delta = m_oports[PSP_PORT_DELTA]->get_table();
+    std::shared_ptr<t_data_table> delta = m_oports[PSP_PORT_DELTA]->get_table();
     delta->clear();
     delta->reserve(fnrows);
 
-    std::shared_ptr<t_table> prev = m_oports[PSP_PORT_PREV]->get_table();
+    std::shared_ptr<t_data_table> prev = m_oports[PSP_PORT_PREV]->get_table();
     prev->clear();
     prev->reserve(fnrows);
 
-    std::shared_ptr<t_table> current = m_oports[PSP_PORT_CURRENT]->get_table();
+    std::shared_ptr<t_data_table> current = m_oports[PSP_PORT_CURRENT]->get_table();
     current->clear();
     current->reserve(fnrows);
 
-    std::shared_ptr<t_table> transitions = m_oports[PSP_PORT_TRANSITIONS]->get_table();
+    std::shared_ptr<t_data_table> transitions = m_oports[PSP_PORT_TRANSITIONS]->get_table();
     transitions->clear();
     transitions->reserve(fnrows);
 
-    std::shared_ptr<t_table> existed = m_oports[PSP_PORT_EXISTED]->get_table();
+    std::shared_ptr<t_data_table> existed = m_oports[PSP_PORT_EXISTED]->get_table();
     existed->clear();
     existed->reserve(fnrows);
     existed->set_size(fnrows);
 
     const t_schema& fschema = flattened->get_schema();
 
-    std::shared_ptr<t_column> pkey_col_sptr = flattened->get_column("psp_pkey");
     std::shared_ptr<t_column> op_col_sptr = flattened->get_column("psp_op");
-
-    t_column* pkey_col = pkey_col_sptr.get();
     t_column* op_col = op_col_sptr.get();
-    t_table* stable = get_table();
+    t_data_table* stable = get_table();
     PSP_GNODE_VERIFY_TABLE(stable);
     const t_schema& sschema = m_state->get_schema();
 
@@ -482,7 +446,6 @@ t_gnode::_process() {
     t_tscalar prev_pkey;
     prev_pkey.clear();
 
-    const t_gstate& cstate = *(m_state.get());
 
     std::vector<t_tscalar> existing_insert_pkeys;
 
@@ -492,7 +455,6 @@ t_gnode::_process() {
 
     std::uint8_t* op_base = op_col->get_nth<std::uint8_t>(0);
     std::vector<t_uindex> added_offset(fnrows);
-    std::vector<t_rlookup> lkup(fnrows);
     std::vector<bool> prev_pkey_eq_vec(fnrows);
 
     for (t_uindex idx = 0; idx < fnrows; ++idx) {
@@ -500,7 +462,6 @@ t_gnode::_process() {
         std::uint8_t op_ = op_base[idx];
         t_op op = static_cast<t_op>(op_);
 
-        lkup[idx] = cstate.lookup(pkey);
         bool row_pre_existed = lkup[idx].m_exists;
         prev_pkey_eq_vec[idx] = pkey == prev_pkey;
 
@@ -538,7 +499,6 @@ t_gnode::_process() {
     transitions->set_size(mask_count);
     existed->set_size(mask_count);
 
-    psp_log_time(repr() + " _process.noinit_path.post_rlkup_loop");
     if (!m_expr_icols.empty()) {
         populate_icols_in_flattened(lkup, flattened);
     }
@@ -623,10 +583,7 @@ t_gnode::_process() {
 #ifdef PSP_PARALLEL_FOR
     );
 #endif
-
-    psp_log_time(repr() + " _process.noinit_path.post_process_helper");
-
-    std::shared_ptr<t_table> flattened_masked
+    std::shared_ptr<t_data_table> flattened_masked
         = mask.count() == flattened->size() ? flattened : flattened->clone(mask);
     PSP_GNODE_VERIFY_TABLE(flattened_masked);
 #ifdef PSP_GNODE_VERIFY
@@ -643,51 +600,23 @@ t_gnode::_process() {
     }
 #endif
 
-    psp_log_time(repr() + " _process.noinit_path.post_update_history");
-
     m_oports[PSP_PORT_FLATTENED]->set_table(flattened_masked);
 
-    if (t_env::log_data_gnode_flattened()) {
-        std::cout << repr() << "gnode_process_flattened_mask" << std::endl;
-        flattened_masked->pprint();
-    }
+    return flattened_masked;
+}
 
-    if (t_env::log_data_gnode_delta()) {
-        std::cout << repr() << "gnode_process_delta" << std::endl;
-        delta->pprint();
-    }
+void
+t_gnode::_process() {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    PSP_VERBOSE_ASSERT(
+        m_mode == NODE_PROCESSING_SIMPLE_DATAFLOW, "Only simple dataflows supported currently");
+    psp_log_time(repr() + " _process.enter");
 
-    if (t_env::log_data_gnode_prev()) {
-        std::cout << repr() << "gnode_process_prev" << std::endl;
-        prev->pprint();
+    std::shared_ptr<t_data_table> flattened_masked = _process_table();
+    if (flattened_masked) {
+        notify_contexts(*flattened_masked);
     }
-
-    if (t_env::log_data_gnode_current()) {
-        std::cout << repr() << "gnode_process_current" << std::endl;
-        current->pprint();
-    }
-
-    if (t_env::log_data_gnode_transitions()) {
-        std::cout << repr() << "gnode_process_transitions" << std::endl;
-        transitions->pprint();
-    }
-
-    if (t_env::log_data_gnode_existed()) {
-        std::cout << repr() << "gnode_process_existed" << std::endl;
-        existed->pprint();
-    }
-
-    if (t_env::log_time_gnode_process()) {
-        auto t2 = std::chrono::high_resolution_clock::now();
-        std::cout << repr() << " gnode_process_time "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-                  << std::endl;
-        std::cout << repr() << "gnode_process_time since begin=> "
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - m_epoch).count()
-                  << std::endl;
-    }
-
-    notify_contexts(*flattened_masked);
 
     psp_log_time(repr() + " _process.noinit_path.exit");
 }
@@ -697,7 +626,7 @@ t_gnode::mapping_size() const {
     return m_state->mapping_size();
 }
 
-t_table*
+t_data_table*
 t_gnode::_get_otable(t_uindex portidx) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
@@ -705,7 +634,7 @@ t_gnode::_get_otable(t_uindex portidx) {
     return m_oports[portidx]->get_table().get();
 }
 
-t_table*
+t_data_table*
 t_gnode::_get_itable(t_uindex portidx) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
@@ -713,18 +642,42 @@ t_gnode::_get_itable(t_uindex portidx) {
     return m_iports[portidx]->get_table().get();
 }
 
-t_table*
+t_data_table*
 t_gnode::get_table() {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     return m_state->get_table().get();
 }
 
-const t_table*
+const t_data_table*
 t_gnode::get_table() const {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     return m_state->get_table().get();
+}
+
+std::shared_ptr<t_data_table>
+t_gnode::get_table_sptr() {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    return m_state->get_table();
+}
+
+/**
+ * Convenience method for promoting a column.  This is a hack used to
+ * interop with javascript more efficiently, and does not handle all
+ * possible type conversions.  Non-public.
+ */
+void
+t_gnode::promote_column(const std::string& name, t_dtype new_type) {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    get_table()->promote_column(name, new_type, 0, false);
+    _get_otable(0)->promote_column(name, new_type, 0, false);
+    _get_itable(0)->promote_column(name, new_type, 0, false);
+    m_tblschema.retype_column(name, new_type);
+    m_ischemas[0].retype_column(name, new_type);
+    m_oschemas[0].retype_column(name, new_type);
 }
 
 void
@@ -744,7 +697,7 @@ t_gnode::set_ctx_state(void* ptr) {
 }
 
 void
-t_gnode::_update_contexts_from_state(const t_table& tbl) {
+t_gnode::_update_contexts_from_state(const t_data_table& tbl) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
 
@@ -829,7 +782,7 @@ t_gnode::_register_context(const std::string& name, t_ctx_type type, std::int64_
 
     bool should_update = m_state->mapping_size() > 0;
 
-    std::shared_ptr<t_table> flattened;
+    std::shared_ptr<t_data_table> flattened;
 
     if (should_update) {
         flattened = m_state->get_pkeyed_table();
@@ -912,7 +865,7 @@ t_gnode::_unregister_context(const std::string& name) {
 }
 
 void
-t_gnode::notify_contexts(const t_table& flattened) {
+t_gnode::notify_contexts(const t_data_table& flattened) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     psp_log_time(repr() + "notify_contexts.enter");
@@ -1252,9 +1205,14 @@ t_gnode::_process_helper<std::string>(const t_column* fcolumn, const t_column* s
     }
 }
 
-t_table*
+t_data_table*
 t_gnode::_get_pkeyed_table() const {
     return m_state->_get_pkeyed_table();
+}
+
+std::shared_ptr<t_data_table>
+t_gnode::get_pkeyed_table_sptr() const {
+    return m_state->get_pkeyed_table();
 }
 
 std::vector<t_custom_column>
@@ -1308,7 +1266,7 @@ t_gnode::clear_updated() {
     m_was_updated = false;
 }
 
-std::shared_ptr<t_table>
+std::shared_ptr<t_data_table>
 t_gnode::get_sorted_pkeyed_table() const {
     return m_state->get_sorted_pkeyed_table();
 }
@@ -1330,6 +1288,23 @@ t_gnode::register_context(const std::string& name, std::shared_ptr<t_ctx2> ctx) 
 void
 t_gnode::register_context(const std::string& name, std::shared_ptr<t_ctx_grouped_pkey> ctx) {
     _register_context(name, GROUPED_PKEY_CONTEXT, reinterpret_cast<std::int64_t>(ctx.get()));
+}
+
+void 
+t_gnode::recompute_columns(std::shared_ptr<t_data_table> table, std::shared_ptr<t_data_table> flattened, const std::vector<t_rlookup>& updated_ridxs) {
+    for (auto l : m_computed_lambdas) {
+        l(table, flattened, updated_ridxs);
+    }
+}
+
+void 
+t_gnode::append_computed_lambdas(std::vector<t_computed_column_def> new_lambdas) {
+    m_computed_lambdas.insert(m_computed_lambdas.end(), new_lambdas.begin(), new_lambdas.end());
+}
+
+std::vector<t_computed_column_def> 
+t_gnode::get_computed_lambdas() const {
+    return m_computed_lambdas;
 }
 
 } // end namespace perspective

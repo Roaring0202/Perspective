@@ -8,7 +8,7 @@
  */
 #include <perspective/base.h>
 #include <perspective/config.h>
-#include <perspective/table.h>
+#include <perspective/data_table.h>
 #include <perspective/date.h>
 #include <perspective/time.h>
 #include <perspective/test_utils.h>
@@ -23,6 +23,7 @@
 #include <perspective/none.h>
 #include <perspective/gnode.h>
 #include <perspective/sym_table.h>
+#include <perspective/exception.h>
 #include <gtest/gtest.h>
 #include <random>
 #include <limits>
@@ -34,7 +35,7 @@ using namespace perspective;
 
 TEST(TABLE, simplest_test)
 {
-    t_table tbl(t_schema({"a", "b"}, {DTYPE_INT64, DTYPE_FLOAT64}), 5);
+    t_data_table tbl(t_schema({"a", "b"}, {DTYPE_INT64, DTYPE_FLOAT64}), 5);
     tbl.init();
     tbl.reserve(5);
 }
@@ -44,23 +45,9 @@ TEST(GNODE, explicit_pkey)
     t_gnode_options options;
     options.m_gnode_type = GNODE_TYPE_PKEYED;
     options.m_port_schema = t_schema{{"x"}, {DTYPE_INT64}};
-#ifndef WIN32
-    EXPECT_EXIT(t_gnode::build(options), ::testing::KilledBySignal(SIGINT), "");
-#endif
+    ASSERT_THROW(t_gnode::build(options), PerspectiveException);
 }
 
-
-TEST(GNODE, implicit_pkey)
-{
-    t_gnode_options options;
-    options.m_gnode_type = GNODE_TYPE_IMPLICIT_PKEYED;
-    options.m_port_schema = t_schema{
-            {"psp_op", "psp_pkey", "x"}, {DTYPE_UINT8, DTYPE_INT64, DTYPE_INT64}};
-
-#ifndef WIN32
-	EXPECT_EXIT(t_gnode::build(options), ::testing::KilledBySignal(SIGINT), "");
-#endif
-}
 
 TEST(SCALAR, scalar_literal_test)
 {
@@ -75,7 +62,7 @@ TEST(SCALAR, scalar_literal_test)
 TEST(CONTEXT_ONE, null_pivot_test_1)
 {
     t_schema sch{{"p", "a"}, {DTYPE_INT64, DTYPE_INT64}};
-    t_table tbl(sch, {{1_ns, 1_ts}, {1_ts, 1_ts}});
+    t_data_table tbl(sch, {{1_ns, 1_ts}, {1_ts, 1_ts}});
     t_config cfg{{"p"}, {"sum_a", AGGTYPE_SUM, "a"}};
     auto ctx = do_pivot<t_ctx1, std::int32_t, DTYPE_INT32>(
         t_do_pivot::PIVOT_NON_PKEYED, tbl, cfg);
@@ -106,7 +93,7 @@ TEST(CONTEXT_ONE, pivot_1)
     t_schema sch{{"b", "s", "i"}, {DTYPE_BOOL, DTYPE_STR, DTYPE_INT64}};
     auto t = mktscalar<bool>(true);
     auto f = mktscalar<bool>(false);
-    t_table tbl(sch,
+    t_data_table tbl(sch,
         {{t, "a"_ts, 1_ts}, {f, "b"_ts, 2_ts}, {t, "c"_ts, 3_ts},
             {f, "d"_ts, 4_ts}});
     t_config cfg{{"b", "s"}, {"sum_i", AGGTYPE_SUM, "i"}};
@@ -125,7 +112,7 @@ TEST(CONTEXT_ONE, pivot_2)
     t_schema sch{{"i", "s", "b"}, {DTYPE_BOOL, DTYPE_STR, DTYPE_INT64}};
     auto t = mktscalar<bool>(true);
     auto f = mktscalar<bool>(false);
-    t_table tbl(sch,
+    t_data_table tbl(sch,
         {{t, "a"_ts, 1_ts}, {f, "b"_ts, 2_ts}, {t, "c"_ts, 3_ts},
             {f, "d"_ts, 4_ts}});
     t_config cfg{{"b", "b", "i", "s"}, {"sum_i", AGGTYPE_SUM, "i"}};
@@ -142,7 +129,7 @@ TEST(CONTEXT_ONE, pivot_3)
     t_schema sch{{"b", "s", "i"}, {DTYPE_BOOL, DTYPE_STR, DTYPE_INT64}};
     auto t = mktscalar<bool>(true);
     auto f = mktscalar<bool>(false);
-    t_table tbl(sch,
+    t_data_table tbl(sch,
         {{t, "a"_ts, 1_ts}, {f, "b"_ts, 2_ts}, {t, "c"_ts, 3_ts},
             {f, "d"_ts, 4_ts}});
     t_config cfg{{"b", "i"}, {"sum_i", AGGTYPE_SUM, "i"}};
@@ -159,7 +146,7 @@ TEST(CONTEXT_ONE, pivot_4)
     t_schema sch{{"b", "s", "i"}, {DTYPE_BOOL, DTYPE_STR, DTYPE_INT64}};
     auto t = mktscalar<bool>(true);
     auto f = mktscalar<bool>(false);
-    t_table tbl(sch,
+    t_data_table tbl(sch,
         {{t, "a"_ts, 1_ts}, {f, "b"_ts, 2_ts}, {t, "c"_ts, 3_ts},
             {f, "d"_ts, 4_ts}});
     t_config cfg{{"i", "s"}, {"sum_i", AGGTYPE_SUM, "i"}};
@@ -260,7 +247,7 @@ TEST(SCALAR, scalar_repr)
     EXPECT_EQ(mktscalar<float>(0).repr(), "f32:v:0");
     EXPECT_EQ(mktscalar<t_date>(t_date(0)).repr(), "date:v:0-00-00");
     EXPECT_EQ(
-        mktscalar<t_time>(t_time(0)).repr(), "time:v:1970-01-01 00:00:00.000");
+        mktscalar<t_time>(t_time(0)).repr(), "time:v:1970-01-01 00:00:00 UTC");
     EXPECT_EQ(mktscalar<const char*>("").repr(), "str:v:");
 
     EXPECT_EQ(mknull(DTYPE_NONE).repr(), "none:i:null");
@@ -443,15 +430,15 @@ public:
     using t_testdata = std::vector<t_stepdata>;
 
 protected:
-    virtual std::shared_ptr<t_table> get_step_otable() = 0;
+    virtual std::shared_ptr<t_data_table> get_step_otable() = 0;
 
     void
     run(const t_testdata& d)
     {
         for (const auto& sd : d)
         {
-            t_table itbl(m_ischema, sd.first);
-            t_table expected_otbl(m_oschema, sd.second);
+            t_data_table itbl(m_ischema, sd.first);
+            t_data_table expected_otbl(m_oschema, sd.second);
             m_g->_send_and_process(itbl);
             auto otbl = get_step_otable();
             EXPECT_EQ(*otbl, expected_otbl);
@@ -481,7 +468,7 @@ public:
         clear = mkclear(DTYPE_T);
     }
 
-    virtual std::shared_ptr<t_table>
+    virtual std::shared_ptr<t_data_table>
     get_step_otable()
     {
         return m_g->get_sorted_pkeyed_table();
@@ -492,29 +479,7 @@ protected:
     t_tscalar clear;
 };
 
-template <t_dtype DTYPE_T>
-class GNodeTestImplicit : public BaseTest
-{
-public:
-    GNodeTestImplicit()
-    {
-        m_ischema = t_schema{{"x"}, {DTYPE_T}};
-        m_oschema = {{"psp_pkey", "x"}, {DTYPE_INT64, DTYPE_T}};
-        t_gnode_options options;
-        options.m_gnode_type = GNODE_TYPE_IMPLICIT_PKEYED;
-        options.m_port_schema = m_ischema;
-        m_g = t_gnode::build(options);
-    }
-
-    virtual std::shared_ptr<t_table>
-    get_step_otable()
-    {
-        return m_g->get_sorted_pkeyed_table();
-    }
-};
-
 typedef GNodeTest<DTYPE_INT64> I64GnodeTest;
-typedef GNodeTestImplicit<DTYPE_INT64> I64GnodeTestImplicit;
 
 // clang-format off
 TEST_F(I64GnodeTest, test_1) {
@@ -662,27 +627,6 @@ TEST_F(I64GnodeTest, test_9) {
     run(data);
 }
 
-
-TEST_F(I64GnodeTestImplicit, test_1) {
-
-    t_testdata data{
-        {
-            {{1_ts}},
-            {{0_ts, 1_ts}}
-        },
-        {
-            {{2_ts}},
-            {{0_ts, 1_ts}, {1_ts, 2_ts}}
-        },
-        {
-            {{3_ts}},
-            {{0_ts, 1_ts}, {1_ts, 2_ts}, {2_ts, 3_ts}}
-        }
-    };
-
-    run(data);
-}
-
 // clang-format on
 
 #define SELF static_cast<T*>(this)
@@ -717,7 +661,7 @@ public:
     {
         for (const auto& sd : d)
         {
-            t_table itbl(m_ischema, sd.first);
+            t_data_table itbl(m_ischema, sd.first);
             this->m_g->_send_and_process(itbl);
             EXPECT_EQ(this->m_ctx->get_data(), sd.second);
         }
@@ -2213,7 +2157,7 @@ TEST(GNODE_TEST, get_registered_contexts)
     gn->register_context("ctx2", ctx2);
 
     auto step = [&gn, &sch](const std::vector<std::vector<t_tscalar>>& data) {
-        t_table tbl(sch, data);
+        t_data_table tbl(sch, data);
         gn->_send_and_process(tbl);
     };
 
@@ -2250,11 +2194,11 @@ TEST(GNODE_TEST, get_registered_contexts)
     std::vector<t_tscalar> expected_ctx0_pkeys{1_ts};
     EXPECT_EQ(ctx0_pkeys, expected_ctx0_pkeys);
 
-    ctx0->sort_by(std::vector<t_sortspec>{{0, SORTTYPE_DESCENDING}});
+    ctx0->sort_by(std::vector<t_sortspec>{{"i", 0, SORTTYPE_DESCENDING}});
     EXPECT_EQ(ctx0->get_cell_data({{0, 0}}), std::vector<t_tscalar>{"b"_ts});
 
     auto trees = gn->get_trees();
-    std::shared_ptr<t_table> pkeyed_table(gn->_get_pkeyed_table());
+    std::shared_ptr<t_data_table> pkeyed_table(gn->_get_pkeyed_table());
     EXPECT_EQ(gn->get_custom_columns().size(), 0);
     gn->_unregister_context("ctx0");
     gn->_unregister_context("ctx1");

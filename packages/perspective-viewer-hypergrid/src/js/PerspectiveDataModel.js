@@ -7,18 +7,31 @@
  *
  */
 
-const TREE_COLUMN_INDEX = require("fin-hypergrid/src/behaviors/Behavior").prototype.treeColumnIndex;
+import Behavior from "fin-hypergrid/src/behaviors/Behavior";
+import {get_type_config} from "@finos/perspective/dist/esm/config/index.js";
 
-function getSubrects(nrows) {
+const {
+    prototype: {treeColumnIndex: TREE_COLUMN_INDEX}
+} = Behavior;
+
+function get_rect(nrows) {
     if (!this.dataWindow) {
         return [];
     }
-    var dw = this.dataWindow;
-    var rect = this.grid.newRectangle(dw.left, dw.top, dw.width, nrows ? Math.min(nrows - dw.top, dw.height) : dw.height); // convert from InclusiveRect
-    return [rect];
+    const dw = this.dataWindow;
+    return this.grid.newRectangle(dw.left, dw.top, dw.width, nrows ? Math.min(nrows - dw.top, dw.height) : dw.height); // convert from InclusiveRect
 }
 
-module.exports = require("datasaur-local").extend("PerspectiveDataModel", {
+function find_row(rows, index) {
+    for (let ridx in rows) {
+        if (rows[ridx].__INDEX__ === index) {
+            return parseInt(ridx);
+        }
+    }
+    return -1;
+}
+
+export default require("datasaur-local").extend("PerspectiveDataModel", {
     isTreeCol: function(x) {
         return x === TREE_COLUMN_INDEX && this.isTree();
     },
@@ -48,17 +61,16 @@ module.exports = require("datasaur-local").extend("PerspectiveDataModel", {
         this._isTree = isTree;
     },
 
-    isCached: function(rects) {
-        return !rects || !rects.find(uncachedRow, this);
-    },
-
     setDirty: function(nrows) {
+        if (!this._grid) {
+            return;
+        }
         if (nrows !== this._nrows) {
-            this.grid.renderer.computeCellsBounds();
+            this._grid.renderer.computeCellsBounds();
         }
         this._dirty = true;
         this._nrows = nrows;
-        this.grid.behaviorChanged();
+        this._grid.behaviorChanged();
     },
 
     // Called when clicking on a row group expand
@@ -88,49 +100,108 @@ module.exports = require("datasaur-local").extend("PerspectiveDataModel", {
             }
             let nrows = await this._view.num_rows();
             this.setDirty(nrows);
-            this.grid.canvas.paintNow();
+            this._grid.canvas.paintNow();
         }
     },
 
-    fetchData: async function(rectangles, resolve) {
-        rectangles = getSubrects.call(this.grid.renderer);
+    _update_select_index: function() {
+        const has_selections = this._grid.selectionModel.hasSelections();
+        if (has_selections) {
+            const row = this.data[this._grid.selectionModel.getLastSelection().origin.y];
+            if (row) {
+                this._select_index = row.__INDEX__;
+            }
+        }
+    },
 
+    _update_editor: function(rect) {
+        const editor = this._grid.cellEditor;
+        let new_index;
+        if (editor) {
+            new_index = find_row(this.data, editor._index);
+            editor.event.resetGridXY(editor.event.dataCell.x, new_index - rect.origin.y + 1);
+            editor.moveEditor();
+        }
+        return new_index;
+    },
+
+    _update_selection: function(new_index) {
+        const has_selections = this._grid.selectionModel.hasSelections();
+        if (has_selections) {
+            new_index = new_index || find_row(this.data, this._select_index);
+            if (new_index !== -1) {
+                const col = this._grid.selectionModel.getLastSelection().origin.x;
+                this._grid.selectionModel.select(col, new_index, 0, 0);
+            }
+        }
+    },
+
+    fetchData: async function(_, resolve) {
         if (this._view === undefined) {
             resolve(true);
             return;
         }
 
-        if (!this._dirty && !rectangles.find(uncachedRow, this)) {
+        let rect = get_rect.call(this._grid.renderer);
+
+        if (!this._dirty && !uncachedRow.call(this._data_window, rect)) {
             resolve(false);
             return;
         }
 
-        if (this._outstanding_requested_rects && rectangles[0].within(this._outstanding_requested_rects[0])) {
+        this._grid.renderer.needsComputeCellsBounds = true;
+
+        if (this._outstanding_rect && !uncachedRow.call(this._oustanding_rect, rect)) {
             resolve(true);
             return;
         }
 
+        this._outstanding_rect = rect;
         this._dirty = false;
-        this._outstanding_requested_rects = rectangles;
 
-        const promises = rectangles.map(rect =>
-            this.pspFetch({
-                start_row: rect.origin.y,
-                end_row: rect.corner.y,
-                start_col: rect.origin.x,
-                end_col: rect.corner.x + 1
-            })
-        );
+        const action = this.pspFetch({
+            start_row: rect.origin.y,
+            end_row: rect.corner.y,
+            start_col: rect.origin.x,
+            end_col: rect.corner.x + 1
+        });
 
         try {
-            await Promise.all(promises);
-            const rects = getSubrects.call(this.grid.renderer);
-            resolve(!!rects.find(uncachedRow, this));
+            this._update_select_index();
+            await action;
+            this._data_window = rect;
+            this._outstanding_rect = undefined;
+            const new_index = this._update_editor(rect);
+            this._update_selection(new_index);
+            rect = get_rect.call(this._grid.renderer);
+            this._grid.renderer.needsComputeCellsBounds = !!uncachedRow.call(this._data_window, rect);
+            resolve(this._grid.renderer.needsComputeCellsBounds);
         } catch (e) {
-            resolve(true);
-        } finally {
-            this._outstanding_requested_rects = undefined;
+            resolve(e);
         }
+    },
+
+    getCellEditorAt: function(columnIndex, rowIndex, declaredEditorName, options) {
+        if (!declaredEditorName) {
+            return;
+        }
+        const offset = this._grid.renderer.dataWindow.top;
+        const editor = this._grid.cellEditors.create(declaredEditorName, options);
+        this._grid.selectionModel.select(columnIndex, rowIndex + offset - 1);
+        editor.el.addEventListener("blur", () => setTimeout(() => editor.cancelEditing()));
+        const args = {
+            start_row: rowIndex + offset - 1,
+            end_row: rowIndex + offset,
+            start_col: columnIndex,
+            end_col: columnIndex + 1,
+            index: true
+        };
+        editor._row = this._view.to_json(args);
+        editor._table = this._table;
+        editor._data = this.data;
+        editor._canvas = this._grid.canvas.canvas;
+        editor._index = this.data[rowIndex + offset - 1].__INDEX__;
+        return editor;
     },
 
     getCell: function(config, rendererName) {
@@ -151,16 +222,18 @@ module.exports = require("datasaur-local").extend("PerspectiveDataModel", {
 });
 
 function uncachedRow(rect) {
-    let start_row = this.data[rect.origin.y];
-    let end_row = this.data[Math.min(rect.corner.y, this.getRowCount() - 1)];
-    return !(start_row && start_row[rect.origin.x] !== undefined && end_row && end_row[rect.corner.x - 1] !== undefined);
+    return !this || this.top !== rect.top || this.height !== rect.height || this.left !== rect.left || this.width !== rect.width;
 }
 
 function cellStyle(gridCellConfig) {
     if (gridCellConfig.value === null || gridCellConfig.value === undefined) {
         gridCellConfig.value = "-";
     } else {
-        const type = this.schema[gridCellConfig.dataCell.x].type;
+        let type = this.schema[gridCellConfig.dataCell.x].type;
+        const type_config = get_type_config(type);
+        if (type_config.type) {
+            type = type_config.type;
+        }
         if (["number", "float", "integer"].indexOf(type) > -1) {
             if (gridCellConfig.value === 0) {
                 gridCellConfig.value = type === "float" ? "0.00" : "0";
@@ -170,9 +243,13 @@ function cellStyle(gridCellConfig) {
                 if (gridCellConfig.value > 0) {
                     gridCellConfig.color = gridCellConfig.columnColorNumberPositive || "rgb(160,207,255)";
                     gridCellConfig.backgroundColor = gridCellConfig.columnBackgroundColorNumberPositive ? gridCellConfig.columnBackgroundColorNumberPositive : gridCellConfig.backgroundColor;
+                    gridCellConfig.borderBottom = gridCellConfig.borderBottomPositive ? gridCellConfig.borderBottomPositive : gridCellConfig.borderBottom;
+                    gridCellConfig.borderRight = gridCellConfig.borderRightPositive ? gridCellConfig.borderRightPositive : gridCellConfig.borderRight;
                 } else {
                     gridCellConfig.color = gridCellConfig.columnColorNumberNegative || "rgb(255,136,136)";
                     gridCellConfig.backgroundColor = gridCellConfig.columnBackgroundColorNumberNegative ? gridCellConfig.columnBackgroundColorNumberNegative : gridCellConfig.backgroundColor;
+                    gridCellConfig.borderBottom = gridCellConfig.borderBottomNegative ? gridCellConfig.borderBottomNegative : gridCellConfig.borderBottom;
+                    gridCellConfig.borderRight = gridCellConfig.borderRightNegative ? gridCellConfig.borderRightNegative : gridCellConfig.borderRight;
                 }
             }
         } else if (type === "boolean") {

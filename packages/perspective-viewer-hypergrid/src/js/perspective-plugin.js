@@ -7,15 +7,72 @@
  *
  */
 
-const rectangular = require("rectangular");
-const superscript = require("superscript-number");
-const lodash = require("lodash");
+import rectangular from "rectangular";
+import superscript from "superscript-number";
+import lodash from "lodash";
+
+import cellRenderersRegistry from "fin-hypergrid/src/cellRenderers";
+
+var Borders = cellRenderersRegistry.BaseClass.extend("Borders", {
+    paint: function(gc, config) {
+        var bounds = config.bounds,
+            x = bounds.x,
+            y = bounds.y,
+            w = bounds.width,
+            h = bounds.height - 1;
+        var color;
+
+        gc.save();
+        gc.translate(-0.5, 0.5); // paint "sharp" lines on pixels instead of "blury" lines between pixels
+        gc.cache.lineWidth = 1;
+
+        color = config.borderTop;
+        if (color) {
+            gc.beginPath();
+            gc.moveTo(x, y);
+            gc.lineTo(x + w, y);
+            gc.cache.strokeStyle = color;
+            gc.stroke();
+        }
+
+        color = config.borderRight;
+        if (color) {
+            gc.beginPath();
+            gc.moveTo(x + w, y);
+            gc.lineTo(x + w, y + h);
+            gc.cache.strokeStyle = color;
+            gc.stroke();
+        }
+
+        color = config.borderBottom;
+        if (color) {
+            gc.beginPath();
+            gc.moveTo(x, y + h);
+            gc.lineTo(x + w, y + h);
+            gc.cache.strokeStyle = color;
+            gc.stroke();
+        }
+
+        color = config.borderLeft;
+        if (color) {
+            gc.beginPath();
+            gc.moveTo(x, y);
+            gc.lineTo(x, y + h);
+            gc.cache.strokeStyle = color;
+            gc.stroke();
+        }
+
+        gc.restore();
+    }
+});
+
+cellRenderersRegistry.add(Borders);
 
 /**
  * @this {Behavior}
  * @param payload
  */
-function setPSP(payload) {
+function setPSP(payload, force = false) {
     const new_schema = [];
 
     if (payload.isTree) {
@@ -45,8 +102,10 @@ function setPSP(payload) {
     // fin-hypergrid-schema-loaded event (in that order). Here we inject a createColumns override
     // into `this` (behavior instance) to complete the setup before the event is dispatched.
     this.createColumns = createColumns;
+    this.refreshColumns = refreshColumns;
 
     if (
+        !force &&
         this._memoized_schema &&
         lodash.isEqual(this._memoized_schema.slice(0, this._memoized_schema.length), new_schema.slice(0, new_schema.length)) &&
         lodash.isEqual(payload.rowPivots, this._memoized_pivots)
@@ -56,11 +115,11 @@ function setPSP(payload) {
     } else {
         this.grid.sbVScroller.index = 0;
         this.grid.sbHScroller.index = 0;
-
         this.grid.setData({
             data: payload.rows,
             schema: new_schema
         });
+        this.grid.selectionModel.clear();
     }
     this._memoized_schema = new_schema;
     this._memoized_pivots = payload.rowPivots;
@@ -71,7 +130,12 @@ function setPSP(payload) {
  */
 function createColumns() {
     Object.getPrototypeOf(this).createColumns.call(this);
+    this.refreshColumns();
+    this.setHeaders(); // grouped-header override that sets all header cell renderers and header row height
+    this.schema_loaded = true;
+}
 
+function refreshColumns() {
     this.getActiveColumns().forEach(function(column) {
         setColumnPropsByType.call(this, column);
     }, this);
@@ -80,41 +144,40 @@ function createColumns() {
     if (treeColumn) {
         setColumnPropsByType.call(this, treeColumn);
     }
-
-    this.stashedWidths = undefined;
-
-    this.setHeaders(); // grouped-header override that sets all header cell renderers and header row height
-
-    this.schema_loaded = true;
 }
 
 /**
  * @this {Behavior}
  */
 function setColumnPropsByType(column) {
-    var props = column.properties;
-    switch (column.type) {
-        case "number":
-        case "float":
-            props.halign = "right";
-            props.columnHeaderHalign = "right";
-            props.format = "FinanceFloat";
-            break;
-        case "integer":
-            props.halign = "right";
-            props.columnHeaderHalign = "right";
-            props.format = "FinanceInteger";
-            break;
-        case "date":
-            props.format = "FinanceDate";
-            break;
-        case "datetime":
-            props.format = "FinanceDatetime";
-            break;
-        default:
-            if (column.index === this.treeColumnIndex) {
-                props.format = "FinanceTree";
-            }
+    const props = column.properties;
+    if (column.index === this.treeColumnIndex) {
+        props.format = "FinanceTree";
+    } else {
+        props.format = `perspective-${column.type}`;
+    }
+    const config = this.grid.behavior.dataModel._config;
+    const isEditable = this.grid.behavior.dataModel._viewer.hasAttribute("editable");
+    if (isEditable && config.row_pivots.length === 0 && config.row_pivots.length === 0) {
+        props.editor = {
+            integer: "perspective-number",
+            string: "perspective-text",
+            date: "perspective-date",
+            datetime: "perspective-datetime",
+            float: "perspective-number"
+        }[column.type];
+        Object.assign(props, {
+            editable: true,
+            editOnKeydown: true,
+            editOnNextCell: false,
+            editOnDoubleClick: true,
+            editorActivationKeys: ["alt", "esc"],
+            cellSelection: true
+        });
+    }
+    const styles = this.grid.get_styles();
+    if (styles[column.type]) {
+        Object.assign(props, styles[column.type]);
     }
 }
 
@@ -200,8 +263,14 @@ function sortColumn(event) {
     }
 }
 
+const right_click_handler = e => {
+    const old_event = e.detail.primitiveEvent;
+    const new_event = new MouseEvent(old_event.type, old_event);
+    e.target.parentElement.parentElement.parentElement.dispatchEvent(new_event);
+};
+
 // `install` makes this a Hypergrid plug-in
-exports.install = function(grid) {
+export const install = function(grid) {
     addSortChars(grid.behavior.charMap);
 
     Object.getPrototypeOf(grid.behavior).setPSP = setPSP;
@@ -209,11 +278,8 @@ exports.install = function(grid) {
     Object.getPrototypeOf(grid.behavior).formatColumnHeader = formatColumnHeader;
 
     grid.addEventListener("fin-column-sort", sortColumn.bind(grid));
-    grid.addEventListener("fin-context-menu", e => {
-        const old_event = e.detail.primitiveEvent.primitiveEvent.detail.primitiveEvent;
-        const new_event = new MouseEvent(old_event.type, old_event);
-        e.target.parentElement.parentElement.parentElement.dispatchEvent(new_event);
-    });
+
+    grid.addEventListener("fin-canvas-context-menu", right_click_handler);
     Object.getPrototypeOf(grid.behavior).cellClicked = async function(event) {
         event.primitiveEvent.preventDefault();
         event.handled = true;
@@ -244,7 +310,8 @@ exports.install = function(grid) {
                     const pivot_value = column_pivot_values[index];
                     return pivot_value ? [pivot, "==", pivot_value] : undefined;
                 })
-                .filter(x => x);
+                .filter(x => x)
+                .filter(([, , value]) => value !== "__ROW_PATH__");
         }
 
         const filters = config.filter.concat(row_filters).concat(column_filters);
@@ -264,15 +331,140 @@ exports.install = function(grid) {
         return this.dataModel.toggleRow(event.dataCell.y, event.dataCell.x, event);
     };
 
-    // function isCanvasBlank(canvas) {
-    //     var blank = document.createElement("canvas");
-    //     blank.width = canvas.width;
-    //     blank.height = canvas.height;
+    // Prevents flashing of cell selection on scroll
+    const renderGrid = grid.renderer.renderGrid;
+    grid.renderer.renderGrid = function(gc) {
+        renderGrid.call(this, gc);
+        this.renderOverrides(gc);
+        this.renderLastSelection(gc);
+    };
 
-    //     return canvas.toDataURL() == blank.toDataURL();
-    // }
+    // Corrects for deselection behavior on keyiup due to shadow-dom
+    grid.canvas.hasFocus = function() {
+        const grid_element = grid.div.parentNode.parentNode.host;
+        const view_shadow_root = grid_element.parentNode.parentNode.parentNode.parentNode.parentNode;
+        return view_shadow_root.activeElement === grid_element;
+    };
 
-    grid.canvas.resize = async function(force, reset) {
+    // Disable cell selection dragging
+    grid.lookupFeature("CellSelection").handleMouseDown = function(grid, event) {
+        var dx = event.gridCell.x,
+            dy = event.dataCell.y,
+            isSelectable = grid.behavior.getCellProperty(event.dataCell.x, event.gridCell.y, "cellSelection");
+
+        if (isSelectable && event.isDataCell && !event.primitiveEvent.detail.isRightClick) {
+            var dCell = grid.newPoint(dx, dy),
+                primEvent = event.primitiveEvent,
+                keys = primEvent.detail.keys;
+            this.extendSelection(grid, dCell, keys);
+        } else if (this.next) {
+            this.next.handleMouseDown(grid, event);
+        }
+    };
+
+    // Disable cell selection by shift-click
+    grid.lookupFeature("CellSelection").extendSelection = function(grid, gridCell, keys) {
+        var hasCTRL = keys.indexOf("CTRL") >= 0,
+            hasSHIFT = false,
+            mousePoint = grid.getMouseDown(),
+            x = gridCell.x, // - numFixedColumns + scrollLeft;
+            y = gridCell.y; // - numFixedRows + scrollTop;
+
+        //were outside of the grid do nothing
+        if (x < 0 || y < 0) {
+            return;
+        }
+
+        //we have repeated a click in the same spot deslect the value from last time
+        if (hasCTRL && x === mousePoint.x && y === mousePoint.y) {
+            grid.clearMostRecentSelection();
+            grid.popMouseDown();
+            grid.repaint();
+            return;
+        }
+
+        if (!hasCTRL && !hasSHIFT) {
+            grid.clearSelections();
+        }
+
+        if (hasSHIFT) {
+            grid.clearMostRecentSelection();
+            grid.select(mousePoint.x, mousePoint.y, x - mousePoint.x, y - mousePoint.y);
+            grid.setDragExtent(grid.newPoint(x - mousePoint.x, y - mousePoint.y));
+        } else {
+            grid.select(x, y, 0, 0);
+            grid.setMouseDown(grid.newPoint(x, y));
+            grid.setDragExtent(grid.newPoint(0, 0));
+        }
+        grid.repaint();
+    };
+
+    // Prevent multiple cell moves while pressing navigation keys while editing.
+    grid.lookupFeature("CellSelection").handleDOWN = function(grid, event) {
+        event.primitiveEvent.preventDefault();
+        if (!grid.cellEditor) {
+            const count = this.getAutoScrollAcceleration();
+            let {x, y} = grid.selectionModel.getLastSelection().origin;
+            const max = grid.renderer.dataWindow.origin.y + grid.renderer.dataWindow.extent.y - 2;
+            if (y + count > max) {
+                grid.sbVScroller.index++;
+            }
+            y = Math.min(grid.behavior.dataModel.getRowCount() - 1, y + count);
+            grid.selectionModel.select(x, y, 0, 0);
+            grid.repaint();
+        }
+    };
+
+    grid.lookupFeature("CellSelection").handleUP = function(grid, event) {
+        event.primitiveEvent.preventDefault();
+        if (!grid.cellEditor) {
+            const count = this.getAutoScrollAcceleration();
+            let {x, y} = grid.selectionModel.getLastSelection().origin;
+            const min = grid.renderer.dataWindow.origin.y;
+            if (y - count < min) {
+                grid.sbVScroller.index--;
+            }
+            y = Math.max(0, y - count);
+            grid.selectionModel.select(x, y, 0, 0);
+            grid.repaint();
+        }
+    };
+
+    grid.lookupFeature("CellSelection").handleLEFT = function(grid, event) {
+        event.primitiveEvent.preventDefault();
+        if (!grid.cellEditor) {
+            const count = this.getAutoScrollAcceleration();
+            let {x, y} = grid.selectionModel.getLastSelection().origin;
+            const min = grid.renderer.dataWindow.origin.x;
+            if (x - count < min) {
+                grid.sbHScroller.index--;
+            }
+            x = Math.max(0, x - 1);
+            grid.selectionModel.select(x, y, 0, 0);
+            grid.repaint();
+        }
+    };
+
+    grid.lookupFeature("CellSelection").handleRIGHT = function(grid, event) {
+        event.primitiveEvent.preventDefault();
+        if (!grid.cellEditor) {
+            const count = this.getAutoScrollAcceleration();
+            let {x, y} = grid.selectionModel.getLastSelection().origin;
+            const max = grid.renderer.dataWindow.origin.x + grid.renderer.dataWindow.extent.x - 1;
+            if (x + count > max) {
+                grid.sbHScroller.index++;
+            }
+            x = Math.min(grid.behavior.schema.length - 1, x + count);
+            grid.selectionModel.select(x, y, 0, 0);
+            grid.repaint();
+        }
+    };
+
+    grid.lookupFeature("CellSelection").moveShiftSelect = function(grid, offsetX, offsetY) {
+        grid.moveSingleSelect(offsetX, offsetY);
+    };
+
+    grid.canvas.resize = async function(force) {
         const width = (this.width = Math.floor(this.div.clientWidth));
         const height = (this.height = Math.floor(this.div.clientHeight));
 
@@ -293,27 +485,31 @@ exports.install = function(grid) {
         this.component.setBounds(this.bounds);
         this.resizeNotification();
 
-        let render = false;
-        if (!reset && (height * ratio > this.canvas.height || force)) {
-            render = await new Promise(resolve => this.component.grid.behavior.dataModel.fetchData(undefined, resolve));
-        }
-
-        if (!render || reset) {
-            this.bounds = new rectangular.Rectangle(0, 0, width, height);
-            this.component.setBounds(this.bounds);
-
-            this.buffer.width = this.canvas.width = width * ratio;
-            this.buffer.height = this.canvas.height = height * ratio;
-
-            this.canvas.style.width = this.buffer.style.width = width + "px";
-            this.canvas.style.height = this.buffer.style.height = height + "px";
-
-            this.bc.scale(ratio, ratio);
-            if (isHIDPI && !this.component.properties.useBitBlit) {
-                this.gc.scale(ratio, ratio);
+        let render = true;
+        if (height * ratio !== this.canvas.height || width * ratio !== this.canvas.width || force) {
+            while (render) {
+                if (!this.component.grid.behavior.dataModel._view) {
+                    // If we are awaiting this grid's initialization, yield until it is ready.
+                    await new Promise(setTimeout);
+                }
+                render = await new Promise(resolve => this.component.grid.behavior.dataModel.fetchData(undefined, resolve));
             }
-
-            grid.canvas.paintNow();
         }
+
+        this.bounds = new rectangular.Rectangle(0, 0, width, height);
+        this.component.setBounds(this.bounds);
+
+        this.buffer.width = this.canvas.width = width * ratio;
+        this.buffer.height = this.canvas.height = height * ratio;
+
+        this.canvas.style.width = this.buffer.style.width = width + "px";
+        this.canvas.style.height = this.buffer.style.height = height + "px";
+
+        this.bc.scale(ratio, ratio);
+        if (isHIDPI && !this.component.properties.useBitBlit) {
+            this.gc.scale(ratio, ratio);
+        }
+        this.component.grid.renderer.needsComputeCellsBounds = false;
+        grid.canvas.paintNow();
     };
 };

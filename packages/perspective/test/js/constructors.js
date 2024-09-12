@@ -47,8 +47,6 @@ var meta_3 = {
     z: "boolean"
 };
 
-let column_meta = [{name: "x", type: "integer", computed: undefined}, {name: "y", type: "string", computed: undefined}, {name: "z", type: "boolean", computed: undefined}];
-
 var arrow_result = [
     {
         f32: 1.5,
@@ -223,6 +221,18 @@ module.exports = perspective => {
     });
 
     describe("Typed Arrays", function() {
+        it("Respects start/end rows", async function() {
+            var table = perspective.table(int_float_data);
+            var view = table.view();
+            const result = await view.col_to_js_typed_array("int", {
+                start_row: 1,
+                end_row: 2
+            });
+            expect(result[0].byteLength).toEqual(4);
+            view.delete();
+            table.delete();
+        });
+
         it("Int, 0-sided view", async function() {
             var table = perspective.table(int_float_data);
             var view = table.view();
@@ -461,7 +471,7 @@ module.exports = perspective => {
             table.delete();
         });
 
-        it("Arrow (chunked) constructor", async function() {
+        it("Arrow (chunked format) constructor", async function() {
             var table = perspective.table(chunked.slice());
             var view = table.view();
             let result = await view.to_json();
@@ -832,7 +842,7 @@ module.exports = perspective => {
                 table.delete();
             });
 
-            it("Computed column of arity 2 with updates on non-dependent columns", async function() {
+            it("Computed column of arity 2 with updates on non-dependent columns, construct from schema", async function() {
                 var meta = {
                     w: "float",
                     x: "float",
@@ -919,13 +929,6 @@ module.exports = perspective => {
                 table2.delete();
                 table.delete();
             });
-        });
-
-        it("Column metadata returns names and type", async function() {
-            let table = perspective.table(data);
-            let result = await table.column_metadata();
-            expect(result).toEqual(column_meta);
-            table.delete();
         });
 
         it("allocates a large tables", async function() {

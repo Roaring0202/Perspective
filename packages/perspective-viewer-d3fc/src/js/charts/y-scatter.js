@@ -56,7 +56,7 @@ function yScatter(container, settings) {
     const yAxis1 = yAxisFactory(splitter.data());
 
     // No grid lines if splitting y-axis
-    const plotSeries = splitter.haveSplit() ? series : withGridLines(series).orient("vertical");
+    const plotSeries = splitter.haveSplit() ? series : withGridLines(series, settings).orient("vertical");
 
     const chart = chartSvgFactory(xAxis, yAxis1)
         .axisSplitter(splitter)
@@ -94,7 +94,8 @@ function yScatter(container, settings) {
 yScatter.plugin = {
     type: "d3_y_scatter",
     name: "Y Scatter Chart",
-    max_size: 25000
+    max_cells: 4000,
+    max_columns: 50
 };
 
 export default yScatter;

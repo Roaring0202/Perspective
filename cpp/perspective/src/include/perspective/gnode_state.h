@@ -11,13 +11,12 @@
 
 #include <perspective/first.h>
 #include <perspective/base.h>
-#include <perspective/table.h>
+#include <perspective/data_table.h>
 #include <tsl/hopscotch_map.h>
-#include <boost/unordered_set.hpp>
+#include <tsl/hopscotch_set.h>
 #include <perspective/mask.h>
 #include <perspective/sym_table.h>
 #include <perspective/rlookup.h>
-#include <tsl/hopscotch_map.h>
 
 namespace perspective {
 
@@ -26,7 +25,7 @@ std::pair<t_tscalar, t_tscalar> get_vec_min_max(const std::vector<t_tscalar>& ve
 class PERSPECTIVE_EXPORT t_gstate {
     typedef tsl::hopscotch_map<t_tscalar, t_uindex> t_mapping;
 
-    typedef boost::unordered_set<t_uindex> t_free_items;
+    typedef tsl::hopscotch_set<t_uindex> t_free_items;
 
 public:
     t_gstate(const t_schema& tblschema, const t_schema& pkeyed_schema);
@@ -39,7 +38,7 @@ public:
     void _mark_deleted(t_uindex idx);
     void erase(const t_tscalar& pkey);
 
-    void update_history(const t_table* tbl);
+    void update_history(const t_data_table* tbl);
     t_mask get_cpp_mask() const;
 
     t_tscalar get_value(const t_tscalar& pkey, const std::string& colname) const;
@@ -53,21 +52,21 @@ public:
     void read_column(const std::string& colname, const std::vector<t_tscalar>& pkeys,
         std::vector<double>& out_data, bool include_nones) const;
 
-    std::shared_ptr<t_table> get_table();
-    std::shared_ptr<const t_table> get_table() const;
+    std::shared_ptr<t_data_table> get_table();
+    std::shared_ptr<const t_data_table> get_table() const;
 
-    std::shared_ptr<t_table> get_pkeyed_table(const t_schema& schema) const;
-    t_table* _get_pkeyed_table(const t_schema& schema) const;
-    t_table* _get_pkeyed_table(const t_schema& schema, const t_mask& mask) const;
+    std::shared_ptr<t_data_table> get_pkeyed_table(const t_schema& schema) const;
+    t_data_table* _get_pkeyed_table(const t_schema& schema) const;
+    t_data_table* _get_pkeyed_table(const t_schema& schema, const t_mask& mask) const;
 
-    std::shared_ptr<t_table> get_pkeyed_table() const;
+    std::shared_ptr<t_data_table> get_pkeyed_table() const;
 
     // Only for tests
-    std::shared_ptr<t_table> get_sorted_pkeyed_table() const;
+    std::shared_ptr<t_data_table> get_sorted_pkeyed_table() const;
 
-    t_table* _get_pkeyed_table() const;
-    t_table* _get_pkeyed_table(const std::vector<t_tscalar>& pkeys) const;
-    t_table* _get_pkeyed_table(
+    t_data_table* _get_pkeyed_table() const;
+    t_data_table* _get_pkeyed_table(const std::vector<t_tscalar>& pkeys) const;
+    t_data_table* _get_pkeyed_table(
         const t_schema& schema, const std::vector<t_tscalar>& pkeys) const;
 
     void pprint() const;
@@ -111,7 +110,7 @@ private:
     t_schema m_tblschema;
     t_schema m_pkeyed_schema;
     bool m_init;
-    std::shared_ptr<t_table> m_table;
+    std::shared_ptr<t_data_table> m_table;
     t_mapping m_mapping;
     t_free_items m_free;
     t_symtable m_symtable;

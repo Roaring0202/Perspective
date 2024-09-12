@@ -7,12 +7,26 @@
  *
  */
 
-import detectIE from "detectie";
-import perspective from "@finos/perspective";
-import {undrag} from "./dragdrop.js";
+import {get_type_config} from "@finos/perspective/dist/esm/config";
+import {dragend} from "./dragdrop.js";
 import {renderers} from "./renderers.js";
 
 import {PerspectiveElement} from "./perspective_element.js";
+import {html, render} from "lit-html";
+
+/**
+ * Render `<option>` blocks
+ * @param {*} names name objects
+ */
+const options = vals => {
+    const opts = [];
+    for (name in vals) {
+        opts.push(html`
+            <option value="${name}">${vals[name].name || name}</option>
+        `);
+    }
+    return opts;
+};
 
 export class DomElement extends PerspectiveElement {
     _clear_columns() {
@@ -21,34 +35,43 @@ export class DomElement extends PerspectiveElement {
     }
 
     set_aggregate_attribute(aggs) {
-        this.setAttribute(
-            "aggregates",
-            JSON.stringify(
-                aggs.reduce((obj, agg) => {
-                    obj[agg.column] = agg.op;
-                    return obj;
-                }, {})
-            )
-        );
+        let is_set = false;
+        let aggregates = aggs.reduce((obj, agg) => {
+            if (this._aggregate_defaults[agg.column] !== agg.op) {
+                obj[agg.column] = agg.op;
+                is_set = true;
+            }
+            return obj;
+        }, {});
+        if (is_set) {
+            this.setAttribute("aggregates", JSON.stringify(aggregates));
+        } else {
+            this.removeAttribute("aggregates");
+        }
+    }
+
+    _get_type(name) {
+        let all = this._get_view_dom_columns("#inactive_columns perspective-row");
+        if (all.length > 0) {
+            const type = all.find(x => x.getAttribute("name") === name);
+            if (type) {
+                return type.getAttribute("type");
+            } else {
+                return "integer";
+            }
+        } else {
+            return "";
+        }
+    }
+
+    _set_row_type(row) {
+        row.setAttribute("type", this._get_type(row.getAttribute("name")));
     }
 
     // Generates a new row in state + DOM
     _new_row(name, type, aggregate, filter, sort, computed) {
         let row = document.createElement("perspective-row");
-
-        if (!type) {
-            let all = this._get_view_dom_columns("#inactive_columns perspective-row");
-            if (all.length > 0) {
-                type = all.find(x => x.getAttribute("name") === name);
-                if (type) {
-                    type = type.getAttribute("type");
-                } else {
-                    type = "integer";
-                }
-            } else {
-                type = "";
-            }
-        }
+        type = type || this._get_type(name);
 
         if (!aggregate) {
             let aggregates = this.get_aggregate_attribute();
@@ -57,21 +80,22 @@ export class DomElement extends PerspectiveElement {
                 if (aggregate) {
                     aggregate = aggregate.op;
                 } else {
-                    aggregate = perspective.AGGREGATE_DEFAULTS[type];
+                    aggregate = get_type_config(type).aggregate;
                 }
             } else {
-                aggregate = perspective.AGGREGATE_DEFAULTS[type];
+                aggregate = get_type_config(type).aggregate;
             }
         }
 
         if (filter) {
             row.setAttribute("filter", filter);
+
             if (type === "string") {
-                const v = this._table.view({row_pivots: [name], aggregates: {}});
-                v.to_json().then(json => {
-                    row.choices(json.slice(1, json.length).map(x => x.__ROW_PATH__));
-                    v.delete();
+                const view = this._table.view({row_pivots: [name], aggregates: {}});
+                view.to_json().then(json => {
+                    row.choices(this._autocomplete_choices(json));
                 });
+                view.delete();
             }
         }
 
@@ -92,7 +116,7 @@ export class DomElement extends PerspectiveElement {
         row.addEventListener("visibility-clicked", this._column_visibility_clicked.bind(this));
         row.addEventListener("aggregate-selected", this._column_aggregate_clicked.bind(this));
         row.addEventListener("filter-selected", this._column_filter_clicked.bind(this));
-        row.addEventListener("close-clicked", event => undrag.call(this, event.detail));
+        row.addEventListener("close-clicked", event => dragend.call(this, event.detail));
         row.addEventListener("sort-order", this._sort_order_clicked.bind(this));
 
         row.addEventListener("row-drag", () => {
@@ -158,7 +182,9 @@ export class DomElement extends PerspectiveElement {
                 }
             } else if (typeof name === "undefined") {
                 container.removeChild(col);
-            } else if (!accessor(name, col)) {
+            } else if (accessor(name, col)) {
+                this._set_row_type(col);
+            } else {
                 if (next_col && accessor(name, next_col)) {
                     container.removeChild(col);
                     i++;
@@ -184,14 +210,13 @@ export class DomElement extends PerspectiveElement {
             }
         }
         this.shadowRoot.querySelector("#psp_styles").innerHTML = style;
-
-        if (detectIE()) {
-            window.ShadyCSS.styleDocument();
-        }
     }
 
-    _show_column_selectors() {
+    _show_column_container() {
         this.shadowRoot.querySelector("#columns_container").style.visibility = "visible";
+    }
+
+    _show_side_panel_actions() {
         this.shadowRoot.querySelector("#side_panel__actions").style.visibility = "visible";
     }
 
@@ -240,10 +265,12 @@ export class DomElement extends PerspectiveElement {
     }
 
     _check_responsive_layout() {
-        if (this.clientHeight < 500 && this._get_view_columns({active: false}).length > this._get_view_columns().length) {
-            this.shadowRoot.querySelector("#app").classList.add("columns_horizontal");
-        } else {
-            this.shadowRoot.querySelector("#app").classList.remove("columns_horizontal");
+        if (this.shadowRoot) {
+            if (this.clientHeight < 500 && this.clientWidth > 600 && this._get_view_columns({active: false}).length > this._get_view_columns().length) {
+                this.shadowRoot.querySelector("#app").classList.add("columns_horizontal");
+            } else {
+                this.shadowRoot.querySelector("#app").classList.remove("columns_horizontal");
+            }
         }
     }
 
@@ -273,18 +300,15 @@ export class DomElement extends PerspectiveElement {
         this._transpose_button = this.shadowRoot.querySelector("#transpose_button");
         this._plugin_information = this.shadowRoot.querySelector(".plugin_information");
         this._plugin_information_action = this.shadowRoot.querySelector(".plugin_information__action");
-        this._plugin_information_dismiss = this.shadowRoot.querySelector(".plugin_information__action--dismiss");
+        this._plugin_information_action_close = this.shadowRoot.querySelector(".plugin_information__action--close");
         this._plugin_information_message = this.shadowRoot.querySelector("#plugin_information_count");
+        this._resize_bar = this.shadowRoot.querySelector("#resize_bar");
     }
 
     // sets state, manipulates DOM
     _register_view_options() {
         let current_renderers = renderers.getInstance();
-        for (let name in current_renderers) {
-            const display_name = current_renderers[name].name || name;
-            const opt = `<option value="${name}">${display_name}</option>`;
-            this._vis_selector.innerHTML += opt;
-        }
+        render(options(current_renderers), this._vis_selector);
     }
 
     // sets state
@@ -297,5 +321,12 @@ export class DomElement extends PerspectiveElement {
             } catch (e) {}
             this.load(data);
         }
+    }
+
+    _autocomplete_choices(json) {
+        return json
+            .slice(1, json.length)
+            .map(x => x.__ROW_PATH__)
+            .filter(x => (Array.isArray(x) ? x.filter(v => !!v).length > 0 : !!x));
     }
 }

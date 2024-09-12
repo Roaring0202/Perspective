@@ -16,7 +16,7 @@
  *
  */
 
-const utils = require("./utils.js");
+const utils = require("@finos/perspective-test");
 const path = require("path");
 
 const add_computed_column = async page => {
@@ -27,6 +27,7 @@ const add_computed_column = async page => {
     await page.evaluate(element => {
         let com = element.shadowRoot.querySelector("perspective-computed-column");
         const columns = [{name: "Order Date", type: "datetime"}];
+        com.state.func_name = "day_of_week";
         com._apply_state(columns, com.computations["day_of_week"], "new_cc");
     }, viewer);
     await page.evaluate(
@@ -39,7 +40,7 @@ const add_computed_column = async page => {
     );
     await page.waitForSelector("perspective-viewer:not([updating])");
     await page.evaluate(element => {
-        const aggs = JSON.parse(element.getAttribute("aggregates"));
+        const aggs = JSON.parse(element.getAttribute("aggregates")) || {};
         aggs["new_cc"] = "dominant";
         element.setAttribute("aggregates", JSON.stringify(aggs));
     }, viewer);
@@ -87,6 +88,7 @@ utils.with_server({}, () => {
                         await page.evaluate(element => {
                             let com = element.shadowRoot.querySelector("perspective-computed-column");
                             const columns = [{name: "State", type: "string"}];
+                            com.state.func_name = "lowercase";
                             com._apply_state(columns, com.computations["lowercase"], "new_cc");
                         }, viewer);
                     });
@@ -100,6 +102,7 @@ utils.with_server({}, () => {
                         await page.evaluate(element => {
                             let com = element.shadowRoot.querySelector("perspective-computed-column");
                             const columns = [{name: "Quantity", type: "integer"}, {name: "Row ID", type: "integer"}];
+                            com.state.func_name = "add";
                             com._apply_state(columns, com.computations["add"], "new_cc");
                         }, viewer);
                     });
@@ -114,6 +117,7 @@ utils.with_server({}, () => {
                         await page.evaluate(element => {
                             let com = element.shadowRoot.querySelector("perspective-computed-column");
                             const columns = [{name: "State", type: "string"}];
+                            com.state.func_name = "lowercase";
                             com._apply_state(columns, com.computations["lowercase"], "new_cc");
                         }, viewer);
                         await page.evaluate(element => {
@@ -154,6 +158,7 @@ utils.with_server({}, () => {
                 await page.evaluate(element => {
                     let com = element.shadowRoot.querySelector("perspective-computed-column");
                     const columns = [{name: "Order Date", type: "datetime"}];
+                    com.state.func_name = "day_of_week";
                     com._apply_state(columns, com.computations["day_of_week"], "new_cc");
                 }, viewer);
                 await page.evaluate(
@@ -215,6 +220,20 @@ utils.with_server({}, () => {
                 await page.evaluate(element => element.setAttribute("aggregates", '{"new_cc":"any"}'), viewer);
                 await page.evaluate(element => element.setAttribute("columns", '["Row ID", "Quantity"]'), viewer);
                 await page.evaluate(element => element.setAttribute("columns", '["Row ID", "Quantity", "new_cc"]'), viewer);
+            });
+
+            test.capture("user defined aggregates maintained on computed columns", async page => {
+                const viewer = await page.$("perspective-viewer");
+                await page.shadow_click("perspective-viewer", "#config_button");
+
+                await page.evaluate(element => {
+                    element.restore({
+                        aggregates: {Computed: "mean"},
+                        "computed-columns": [{name: "Computed", inputs: ["Sales", "Profit"], func: "add"}],
+                        columns: ["Computed", "Quantity"],
+                        "row-pivots": ["Category"]
+                    });
+                }, viewer);
             });
         },
         {

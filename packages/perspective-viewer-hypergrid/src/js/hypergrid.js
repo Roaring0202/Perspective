@@ -7,194 +7,33 @@
  *
  */
 
-const Hypergrid = require("fin-hypergrid");
-const Base = require("fin-hypergrid/src/Base");
-const groupedHeaderPlugin = require("fin-hypergrid-grouped-header-plugin");
+import Hypergrid from "fin-hypergrid";
+import Base from "fin-hypergrid/src/Base";
+import groupedHeaderPlugin from "fin-hypergrid-grouped-header-plugin";
 
-const perspectivePlugin = require("./perspective-plugin");
-const PerspectiveDataModel = require("./PerspectiveDataModel");
-const treeLineRendererPaint = require("./hypergrid-tree-cell-renderer").treeLineRendererPaint;
-const {psp2hypergrid, page2hypergrid} = require("./psp-to-hypergrid");
-const {cloneDeep} = require("lodash");
+import * as perspectivePlugin from "./perspective-plugin";
+import PerspectiveDataModel from "./PerspectiveDataModel";
+import {psp2hypergrid, page2hypergrid} from "./psp-to-hypergrid";
 
-import {bindTemplate} from "@finos/perspective-viewer/cjs/js/utils.js";
+import {bindTemplate} from "@finos/perspective-viewer/dist/esm/utils.js";
 
-const TEMPLATE = require("../html/hypergrid.html");
+import TEMPLATE from "../html/hypergrid.html";
 
 import style from "../less/hypergrid.less";
-
-const COLUMN_HEADER_FONT = "12px Helvetica, sans-serif";
-const GROUP_LABEL_FONT = "12px Open Sans, sans-serif"; // overrides COLUMN_HEADER_FONT for group labels
-
-const base_grid_properties = {
-    autoSelectRows: false,
-    cellPadding: 5,
-    cellSelection: false,
-    columnSelection: false,
-    rowSelection: false,
-    checkboxOnlyRowSelections: false,
-    columnClip: true,
-    columnHeaderFont: COLUMN_HEADER_FONT,
-    columnHeaderForegroundSelectionFont: '12px "Arial", Helvetica, sans-serif',
-    columnsReorderable: false,
-    defaultRowHeight: 24,
-    editable: false,
-    editOnKeydown: true,
-    editor: "textfield",
-    editorActivationKeys: ["alt", "esc"],
-    enableContinuousRepaint: false,
-    fixedColumnCount: 0,
-    fixedRowCount: 0,
-    fixedLinesHWidth: 1,
-    fixedLinesVWidth: 1,
-    font: '12px "Arial", Helvetica, sans-serif',
-    foregroundSelectionFont: '12px "Arial", Helvetica, sans-serif',
-    gridLinesH: false,
-    gridLinesV: true, // except: due to groupedHeaderPlugin's `clipRuleLines: true` option, only header row displays these lines
-    gridLinesUserDataArea: false, // restricts vertical rule line rendering to header row only
-    halign: "left",
-    headerTextWrapping: false,
-    hoverColumnHighlight: {enabled: false},
-    hoverRowHighlight: {
-        enabled: true,
-        backgroundColor: "#555"
-    },
-    hoverCellHighlight: {
-        enabled: true,
-        backgroundColor: "#333"
-    },
-    noDataMessage: "",
-    minimumColumnWidth: 50,
-    multipleSelections: false,
-    renderFalsy: false,
-    rowHeaderFont: "12px Arial, Helvetica, sans-serif",
-    rowHeaderForegroundSelectionFont: '12px "Arial", Helvetica, sans-serif',
-    rowResize: true,
-    scrollbarHoverOff: "visible",
-    rowHeaderCheckboxes: false,
-    rowHeaderNumbers: false,
-    showFilterRow: true,
-    showHeaderRow: true,
-    showTreeColumn: false,
-    singleRowSelectionMode: false,
-    sortColumns: [],
-    sortOnDoubleClick: true,
-    treeRenderer: "TreeCell",
-    treeHeaderFont: "12px Arial, Helvetica, sans-serif",
-    treeHeaderForegroundSelectionFont: '12px "Arial", Helvetica, sans-serif',
-    useBitBlit: false,
-    vScrollbarClassPrefix: "",
-    voffset: 0
-};
-
-const light_theme_overrides = {
-    backgroundColor: "#ffffff",
-    color: "#666",
-    lineColor: "#AAA",
-    // font: '12px Arial, Helvetica, sans-serif',
-    font: '12px "Open Sans", Helvetica, sans-serif',
-    foregroundSelectionFont: "12px amplitude-regular, Helvetica, sans-serif",
-    foregroundSelectionColor: "#666",
-    backgroundSelectionColor: "rgba(162, 183, 206, 0.3)",
-    selectionRegionOutlineColor: "rgb(45, 64, 85)",
-    columnHeaderColor: "#666",
-    columnHeaderHalign: "left", // except: group header labels always 'center'; numbers always 'right' per `setPSP`
-    columnHeaderBackgroundColor: "#fff",
-    columnHeaderForegroundSelectionColor: "#333",
-    columnHeaderBackgroundSelectionColor: "#40536d",
-    rowHeaderForegroundSelectionFont: "12px Arial, Helvetica, sans-serif",
-    treeHeaderColor: "#666",
-    treeHeaderBackgroundColor: "#fff",
-    treeHeaderForegroundSelectionColor: "#333",
-    treeHeaderBackgroundSelectionColor: "#40536d",
-    hoverCellHighlight: {
-        enabled: true,
-        backgroundColor: "#eeeeee"
-    },
-    hoverRowHighlight: {
-        enabled: true,
-        backgroundColor: "#f6f6f6"
-    }
-};
-
-function generateGridProperties(overrides) {
-    return Object.assign({}, cloneDeep(base_grid_properties), cloneDeep(overrides));
-}
-
-function null_formatter(formatter, null_value = "") {
-    let old = formatter.format.bind(formatter);
-    formatter.format = val => {
-        if (typeof val === "string") {
-            return val;
-        }
-        if (null_value === val) {
-            return "-";
-        }
-        let x = old(val);
-        if (x === "") {
-            return "-";
-        }
-        return x;
-    };
-
-    return formatter;
-}
+import {get_styles, clear_styles, default_grid_properties} from "./styles.js";
+import {set_formatters} from "./formatters.js";
+import {set_editors} from "./editors.js";
+import {treeLineRendererPaint} from "./hypergrid-tree-cell-renderer";
 
 bindTemplate(TEMPLATE, style)(
     class HypergridElement extends HTMLElement {
-        set_data(data, schema, tschema, row_pivots, columns) {
+        set_data(data, schema, tschema, row_pivots, columns, force = false) {
             const hg_data = psp2hypergrid(data, schema, tschema, row_pivots, columns);
             if (this.grid) {
-                this.grid.behavior.setPSP(hg_data);
+                this.grid.behavior.setPSP(hg_data, force);
             } else {
                 this._hg_data = hg_data;
             }
-        }
-
-        get_style(name) {
-            if (window.ShadyCSS) {
-                return window.ShadyCSS.getComputedStyleValue(this, name);
-            } else {
-                return getComputedStyle(this).getPropertyValue(name);
-            }
-        }
-
-        apply_styles() {
-            const font = `${this.get_style("--hypergrid--font-size")} ${this.get_style("--hypergrid--font-family")}`;
-            const headerfont = `${this.get_style("--hypergrid-header--font-size")} ${this.get_style("--hypergrid-header--font-family")}`;
-            const hoverRowHighlight = {
-                enabled: true,
-                backgroundColor: this.get_style("--hypergrid-row-hover--background"),
-                color: this.get_style("--hypergrid-row-hover--color")
-            };
-
-            const hoverCellHighlight = {
-                enabled: true,
-                backgroundColor: this.get_style("--hypergrid-cell-hover--background"),
-                color: this.get_style("--hypergrid-cell-hover--color")
-            };
-
-            const grid_properties = {
-                treeHeaderBackgroundColor: this.get_style("--hypergrid-tree-header--background"),
-                backgroundColor: this.get_style("--hypergrid-tree-header--background"),
-                treeHeaderColor: this.get_style("--hypergrid-tree-header--color"),
-                color: this.get_style("--hypergrid-tree-header--color"),
-                columnHeaderBackgroundColor: this.get_style("--hypergrid-header--background"),
-                columnHeaderSeparatorColor: this.get_style("--hypergrid-separator--color"),
-                columnHeaderColor: this.get_style("--hypergrid-header--color"),
-                columnColorNumberPositive: this.get_style("--hypergrid-positive--color"),
-                columnColorNumberNegative: this.get_style("--hypergrid-negative--color"),
-                columnBackgroundColorNumberPositive: this.get_style("--hypergrid-positive--background"),
-                columnBackgroundColorNumberNegative: this.get_style("--hypergrid-negative--background"),
-                columnHeaderFont: headerfont,
-                font,
-                rowHeaderFont: font,
-                treeHeaderFont: font,
-                hoverRowHighlight,
-                hoverCellHighlight
-            };
-
-            this.grid && this.grid.addProperties(grid_properties);
         }
 
         connectedCallback() {
@@ -205,25 +44,11 @@ bindTemplate(TEMPLATE, style)(
                 this.grid = new Hypergrid(host, {DataModel: PerspectiveDataModel});
                 this.grid.canvas.stopResizeLoop();
                 host.removeAttribute("hidden");
+                this.grid.get_styles = () => get_styles(this);
 
-                // window.g = this.grid; window.p = g.properties; // for debugging convenience in console
-
-                this.grid.installPlugins([
-                    perspectivePlugin,
-                    [
-                        groupedHeaderPlugin,
-                        {
-                            paintBackground: null, // no group header label decoration
-                            columnHeaderLines: false, // only draw vertical rule lines between group labels
-                            groupConfig: [
-                                {
-                                    halign: "center", // center group labels
-                                    font: GROUP_LABEL_FONT
-                                }
-                            ]
-                        }
-                    ]
-                ]);
+                const grid_properties = default_grid_properties();
+                grid_properties.renderer = ["SimpleCell", "Borders"];
+                this.grid.installPlugins([perspectivePlugin, [groupedHeaderPlugin, grid_properties.groupedHeader]]);
 
                 // Broken in fin-hypergrid-grouped-header 0.1.2
                 let _old_paint = this.grid.cellRenderers.items.GroupedHeader.paint;
@@ -232,70 +57,15 @@ bindTemplate(TEMPLATE, style)(
                     return _old_paint.call(this, gc, config);
                 };
 
-                const grid_properties = generateGridProperties(light_theme_overrides);
-
-                grid_properties["showRowNumbers"] = grid_properties["showCheckboxes"] || grid_properties["showRowNumbers"];
                 this.grid.addProperties(grid_properties);
-                this.apply_styles();
+                const styles = get_styles(this);
+                this.grid.addProperties(styles[""]);
 
-                this.grid.localization.header = {
-                    format: value => this.grid.behavior.formatColumnHeader(value)
-                };
+                set_formatters(this.grid);
+                set_editors(this.grid);
 
                 // Add tree cell renderer
                 this.grid.cellRenderers.add("TreeCell", Base.extend({paint: treeLineRendererPaint}));
-
-                const float_formatter = null_formatter(
-                    new this.grid.localization.NumberFormatter("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })
-                );
-                this.grid.localization.add("FinanceFloat", float_formatter);
-
-                const integer_formatter = null_formatter(new this.grid.localization.NumberFormatter("en-us", {}));
-                this.grid.localization.add("FinanceInteger", integer_formatter);
-
-                const datetime_formatter = null_formatter(
-                    new this.grid.localization.DateFormatter("en-us", {
-                        week: "numeric",
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "numeric",
-                        second: "numeric"
-                    }),
-                    -1
-                );
-
-                const date_formatter = null_formatter(
-                    new this.grid.localization.DateFormatter("en-us", {
-                        week: "numeric",
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric"
-                    }),
-                    -1
-                );
-                this.grid.localization.add("FinanceDatetime", datetime_formatter);
-                this.grid.localization.add("FinanceDate", date_formatter);
-
-                this.grid.localization.add("FinanceTree", {
-                    format: function(val, type) {
-                        const f = {
-                            date: date_formatter,
-                            datetime: datetime_formatter,
-                            integer: integer_formatter,
-                            float: float_formatter
-                        }[type];
-                        if (f) {
-                            return f.format(val);
-                        }
-                        return val;
-                    },
-                    parse: x => x
-                });
 
                 if (this._hg_data) {
                     this.grid.behavior.setPSP(this._hg_data);
@@ -306,26 +76,41 @@ bindTemplate(TEMPLATE, style)(
     }
 );
 
-const PRIVATE = Symbol("Hypergrid private");
+const HYPERGRID_INSTANCE = Symbol("Hypergrid private");
 
 async function grid_update(div, view, task) {
     const nrows = await view.num_rows();
-
     if (task.cancelled) {
         return;
     }
-
-    const dataModel = this.hypergrid.behavior.dataModel;
+    const hypergrid = get_hypergrid.call(this);
+    if (!hypergrid) {
+        return;
+    }
+    const dataModel = hypergrid.behavior.dataModel;
     dataModel.setDirty(nrows);
     dataModel._view = view;
-    this.hypergrid.canvas.paintNow();
+    dataModel._table = this._table;
+    hypergrid.canvas.paintNow();
 }
 
 function style_element() {
-    const element = this[PRIVATE].grid;
-    element.apply_styles();
-    element.grid.canvas.paintNow();
+    if (this[HYPERGRID_INSTANCE]) {
+        const element = this[HYPERGRID_INSTANCE];
+        clear_styles(element);
+        const styles = get_styles(element);
+        if (element.grid) {
+            element.grid.addProperties(styles[""]);
+        }
+        element.grid.behavior.createColumns();
+        element.grid.canvas.paintNow();
+    }
 }
+
+function get_hypergrid() {
+    return this[HYPERGRID_INSTANCE] ? this[HYPERGRID_INSTANCE].grid : undefined;
+}
+
 /**
  * Create a new <perspective-hypergrid> web component, and attach it to the DOM.
  *
@@ -333,14 +118,17 @@ function style_element() {
  */
 async function getOrCreateHypergrid(div) {
     let perspectiveHypergridElement;
-    if (!this.hypergrid) {
-        perspectiveHypergridElement = this[PRIVATE].grid = document.createElement("perspective-hypergrid");
-        Object.defineProperty(this, "hypergrid", {
-            configurable: true,
-            get: () => (this[PRIVATE].grid ? this[PRIVATE].grid.grid : undefined)
+    if (!get_hypergrid.call(this)) {
+        perspectiveHypergridElement = this[HYPERGRID_INSTANCE] = document.createElement("perspective-hypergrid");
+        perspectiveHypergridElement.setAttribute("tabindex", 1);
+        perspectiveHypergridElement.addEventListener("blur", () => {
+            if (perspectiveHypergridElement.grid && !perspectiveHypergridElement.grid._is_editing) {
+                perspectiveHypergridElement.grid.selectionModel.clear();
+                perspectiveHypergridElement.grid.paintNow();
+            }
         });
     } else {
-        perspectiveHypergridElement = this[PRIVATE].grid;
+        perspectiveHypergridElement = this[HYPERGRID_INSTANCE];
     }
 
     if (!perspectiveHypergridElement.isConnected) {
@@ -352,11 +140,12 @@ async function getOrCreateHypergrid(div) {
     return perspectiveHypergridElement;
 }
 
-async function grid_create(div, view, task) {
-    this[PRIVATE] = this[PRIVATE] || {};
-    const hypergrid = this.hypergrid;
+async function grid_create(div, view, task, max_rows, max_cols, force) {
+    let hypergrid = get_hypergrid.call(this);
     if (hypergrid) {
         hypergrid.behavior.dataModel._view = undefined;
+        hypergrid.behavior.dataModel._table = undefined;
+        hypergrid.allowEvents(false);
     }
 
     const config = await view.get_config();
@@ -369,7 +158,8 @@ async function grid_create(div, view, task) {
     const rowPivots = config.row_pivots;
     const window = {
         start_row: 0,
-        end_row: Math.max(colPivots.length + 1, rowPivots.length + 1)
+        end_row: Math.max(colPivots.length + 1, rowPivots.length + 1),
+        index: rowPivots.length === 0 && colPivots.length === 0
     };
 
     const [nrows, json, schema, tschema] = await Promise.all([view.num_rows(), view.to_columns(window), view.schema(), this._table.schema()]);
@@ -379,36 +169,45 @@ async function grid_create(div, view, task) {
     }
 
     let perspectiveHypergridElement = await getOrCreateHypergrid.call(this, div);
+    hypergrid = get_hypergrid.call(this);
 
     if (task.cancelled) {
         return;
     }
 
-    const dataModel = this.hypergrid.behavior.dataModel;
-    const columns = Object.keys(json);
+    let columns = Object.keys(json).filter(x => x !== "__INDEX__");
+    const dataModel = hypergrid.behavior.dataModel;
+    dataModel._grid = hypergrid;
 
     dataModel.setIsTree(rowPivots.length > 0);
     dataModel.setDirty(nrows);
     dataModel._view = view;
+    dataModel._table = this._table;
     dataModel._config = config;
     dataModel._viewer = this;
 
     dataModel.pspFetch = async range => {
         range.end_row += this.hasAttribute("settings") ? 8 : 2;
         range.end_col += rowPivots && rowPivots.length > 0 ? 1 : 0;
+        range.index = rowPivots.length === 0 && colPivots.length === 0;
         let next_page = await dataModel._view.to_columns(range);
+        if (columns.length === 0) {
+            columns = Object.keys(await view.to_columns(window));
+        }
         dataModel.data = [];
         const rows = page2hypergrid(next_page, rowPivots, columns);
-        const data = dataModel.data;
         const base = range.start_row;
+        const data = dataModel.data;
         rows.forEach((row, offset) => (data[base + offset] = row));
     };
 
-    perspectiveHypergridElement.set_data(json, schema, tschema, rowPivots, columns);
-    this.hypergrid.renderer.computeCellsBounds(true);
-    await this.hypergrid.canvas.resize(true);
-    this.hypergrid.canvas.paintNow();
-    this.hypergrid.canvas.paintNow();
+    perspectiveHypergridElement.set_data(json, schema, tschema, rowPivots, columns, force);
+    hypergrid.allowEvents(false);
+    hypergrid.renderer.computeCellsBounds(true);
+    await hypergrid.canvas.resize(true);
+    hypergrid.renderer.computeCellsBounds(true);
+    hypergrid.canvas.paintNow();
+    hypergrid.allowEvents(true);
 }
 
 global.registerPlugin("hypergrid", {
@@ -419,23 +218,25 @@ global.registerPlugin("hypergrid", {
     deselectMode: "pivots",
     styleElement: style_element,
     resize: async function() {
-        if (this.hypergrid) {
-            this.hypergrid.canvas.checksize();
-            this.hypergrid.canvas.paintNow();
+        const hypergrid = get_hypergrid.call(this);
+        if (hypergrid) {
+            hypergrid.canvas.checksize();
+            hypergrid.canvas.paintNow();
             let nrows = await this._view.num_rows();
-            this.hypergrid.behavior.dataModel.setDirty(nrows);
-            this.hypergrid.canvas.paintNow();
+            hypergrid.behavior.dataModel.setDirty(nrows);
+            hypergrid.canvas.paintNow();
         }
     },
     delete: function() {
-        if (this.hypergrid) {
-            this.hypergrid.terminate();
-            this.hypergrid.div = undefined;
-            this.hypergrid.canvas.div = undefined;
-            this.hypergrid.canvas.canvas = undefined;
-            this.hypergrid.sbVScroller = undefined;
-            this.hypergrid.sbHScroller = undefined;
-            delete this[PRIVATE]["grid"];
+        const hypergrid = get_hypergrid.call(this);
+        if (hypergrid) {
+            hypergrid.terminate();
+            hypergrid.div = undefined;
+            hypergrid.canvas.div = undefined;
+            hypergrid.canvas.canvas = undefined;
+            hypergrid.sbVScroller = undefined;
+            hypergrid.sbHScroller = undefined;
+            delete this[HYPERGRID_INSTANCE];
         }
     }
 });

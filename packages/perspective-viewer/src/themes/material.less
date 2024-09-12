@@ -10,27 +10,32 @@
 @import "../less/variables";
 
 @import (css) url("https://fonts.googleapis.com/css?family=Material+Icons");
-@import (css) url("https://fonts.googleapis.com/css?family=Open+Sans"); // ~typeface-open-sans/index.css");
+@import (css) url("https://fonts.googleapis.com/css?family=Open+Sans:400,700");// ~typeface-open-sans/index.css");
 @import (css) url("https://fonts.googleapis.com/css?family=Roboto+Mono"); // ~typeface-roboto-mono/index.css");
 
 perspective-viewer {
-    --interface--font-family: "Open Sans";
+    font-family: "Open Sans";
+
     --interface-monospace--font-family: "Roboto Mono";
     --inactive-column-selector--content: "\E835";
     --active-column-selector--content: "\E834";
-    --active-column-selector--color: @blue800;
-    --active-column--background: none;
+    --active--color: @blue800;
+    --column--background: none;
     --column--height: 21px;
     --active-column--height: 51px;
     --inactive-column--height: 24px;
     --active-columns--justify-content: space-evenly;
     --inactive-column--opacity: 0.3;
 
-    --column_type-float--color: @blue800;
-    --column_type-string--color: rgb(255,136,136);
+    --float--column-type--color: @blue800;
+    --string--column-type--color: rgb(255,136,136);
 
-    --config_button--before: "more_vert";
+    --settings-button--content: "more_vert";
     --button--font-family: "Material Icons";
+    --overflow_hint--before: "error_outline";
+    --overflow_hint--font-family: "Material Icons";
+    --overflow_hint--color: rgba(0,0,0,0.2);
+    --overflow_hint--padding: 0 12px 0 6px;
 
     --copy_button--before: "file_copy";
     --download_button--before: "save_alt";
@@ -43,6 +48,7 @@ perspective-viewer {
     --sort-order-asc--before: "arrow_upward";
     --sort-order-desc--before: "arrow_downward";
     --sort-order-none--before: "remove";
+    --close_button--before: "close";
     --sort-order-col-asc--before: "arrow_back";
     --sort-order-col-desc--before: "arrow_forward";
     --sort_order-padding: 0 0 0 0px;
@@ -69,16 +75,19 @@ perspective-viewer {
     --column_selector--width: 31px;
     --column_selector--font-size: 16px;
 
+    --hypergrid-gridline--color: #AAA;
+    --hypergrid--color: #666;
     --hypergrid--padding: 24px;
     --side_panel--padding: 24px 24px 24px 17px;
     --button--padding: 24px 17px 0px 17px;
     --button--font-size: 16px;
-    --button-hover--color: @blue800;
 
     --top_panel--padding: 0px 0px 24px 0px;
     --hypergrid-scrollbar--width: 8px;
     --hypergrid-scrollbar--border-radius: 5px;
 
+    --hypergrid--background: #fff;
+    
     --hypergrid-positive--color: #1078d1;
     --hypergrid-negative--color: #de3838;
 
@@ -86,4 +95,6 @@ perspective-viewer {
     --hypergrid-header--font-size: 12px;
     --hypergrid--font-family: "Open Sans";
     --hypergrid-header--font-family: "Open Sans";
+
+    --d3fc-treedata-axis--lines: none;
 }

@@ -11,13 +11,24 @@
 #include <perspective/base.h>
 #include <cstdint>
 #include <limits>
+#ifdef PSP_ENABLE_WASM
+#include <emscripten.h>
+#else
+#include <perspective/exception.h>
+#endif
 
 namespace perspective {
 
 void
-psp_abort() {
-    std::cerr << "abort()" << std::endl;
-    std::raise(SIGINT);
+psp_abort(const std::string& message) {
+#ifdef PSP_ENABLE_WASM
+    std::cerr << "Abort(): " << message << std::endl;
+    EM_ASM({
+        throw new Error('abort()');
+    });
+#else
+    throw PerspectiveException(message.c_str());
+#endif
 }
 
 bool
@@ -253,6 +264,24 @@ dtype_to_str(t_dtype dtype) {
     return str_dtype.str();
 }
 
+t_dtype
+str_to_dtype(const std::string& typestring) {
+    // returns most commonly used types in the JS/python public APIs.
+    if (typestring == "integer") {
+        return DTYPE_INT32;
+    } else if (typestring == "float") {
+        return DTYPE_FLOAT64;
+    } else if (typestring == "boolean") {
+        return DTYPE_BOOL;
+    } else if (typestring == "date") {
+        return DTYPE_DATE;
+    } else if (typestring == "datetime") {
+        return DTYPE_TIME;
+    } else {
+        return DTYPE_STR;
+    }
+}
+
 std::string
 filter_op_to_str(t_filter_op op) {
     switch (op) {
@@ -295,17 +324,11 @@ filter_op_to_str(t_filter_op op) {
         case FILTER_OP_AND: {
             return "and";
         } break;
-        case FILTER_OP_IS_NAN: {
-            return "is_nan";
+        case FILTER_OP_IS_NULL: {
+            return "is null";
         } break;
-        case FILTER_OP_IS_NOT_NAN: {
-            return "!is_nan";
-        } break;
-        case FILTER_OP_IS_VALID: {
-            return "is not None";
-        } break;
-        case FILTER_OP_IS_NOT_VALID: {
-            return "is None";
+        case FILTER_OP_IS_NOT_NULL: {
+            return "is not null";
         } break;
     }
     PSP_COMPLAIN_AND_ABORT("Reached end of function");
@@ -313,7 +336,7 @@ filter_op_to_str(t_filter_op op) {
 }
 
 t_filter_op
-str_to_filter_op(std::string str) {
+str_to_filter_op(const std::string& str) {
     if (str == "<") {
         return t_filter_op::FILTER_OP_LT;
     } else if (str == "<=") {
@@ -338,16 +361,12 @@ str_to_filter_op(std::string str) {
         return t_filter_op::FILTER_OP_NOT_IN;
     } else if (str == "&" || str == "and") {
         return t_filter_op::FILTER_OP_AND;
-    } else if (str == "|") {
+    } else if (str == "|" || str == "or") {
         return t_filter_op::FILTER_OP_OR;
-    } else if (str == "is nan" || str == "is_nan") {
-        return t_filter_op::FILTER_OP_IS_NAN;
-    } else if (str == "is not nan" || str == "!is_nan") {
-        return t_filter_op::FILTER_OP_IS_NOT_NAN;
-    } else if (str == "is not None") {
-        return t_filter_op::FILTER_OP_IS_VALID;
-    } else if (str == "is None") {
-        return t_filter_op::FILTER_OP_IS_NOT_VALID;
+    } else if (str == "is null" || str == "is None") {
+        return t_filter_op::FILTER_OP_IS_NULL;
+    } else if (str == "is not null" || str == "is not None") {
+        return t_filter_op::FILTER_OP_IS_NOT_NULL;
     } else {
         PSP_COMPLAIN_AND_ABORT("Encountered unknown filter operation.");
         // use and as default
@@ -356,7 +375,7 @@ str_to_filter_op(std::string str) {
 }
 
 t_sorttype
-str_to_sorttype(std::string str) {
+str_to_sorttype(const std::string& str) {
     if (str == "none") {
         return SORTTYPE_NONE;
     } else if (str == "asc" || str == "col asc") {
@@ -374,7 +393,7 @@ str_to_sorttype(std::string str) {
 }
 
 t_aggtype
-str_to_aggtype(std::string str) {
+str_to_aggtype(const std::string& str) {
     if (str == "distinct count" || str == "distinctcount" || str == "distinct"
         || str == "distinct_count") {
         return t_aggtype::AGGTYPE_DISTINCT_COUNT;
@@ -459,7 +478,7 @@ _get_default_aggregate(t_dtype dtype) {
         case DTYPE_INT64: {
             agg_op = t_aggtype::AGGTYPE_SUM;
         } break;
-        default: { agg_op = t_aggtype::AGGTYPE_DISTINCT_COUNT; }
+        default: { agg_op = t_aggtype::AGGTYPE_COUNT; }
     }
     return agg_op;
 }
@@ -480,7 +499,7 @@ _get_default_aggregate_string(t_dtype dtype) {
         case DTYPE_INT64: {
             agg_op_str = "sum";
         } break;
-        default: { agg_op_str = "distinct count"; }
+        default: { agg_op_str = "count"; }
     }
     return agg_op_str;
 }

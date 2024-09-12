@@ -12,11 +12,11 @@ import {renderers} from "./renderers.js";
 export class StateElement extends HTMLElement {
     get _plugin() {
         let current_renderers = renderers.getInstance();
-        let view = this.getAttribute("view");
+        let view = this.getAttribute("plugin");
         if (!view) {
             view = Object.keys(current_renderers)[0];
         }
-        this.setAttribute("view", view);
+        this.setAttribute("plugin", view);
         return current_renderers[view] || current_renderers[Object.keys(current_renderers)[0]];
     }
 
@@ -87,6 +87,21 @@ export class StateElement extends HTMLElement {
 
     get_aggregate_attribute() {
         const aggs = JSON.parse(this.getAttribute("aggregates")) || {};
-        return Object.keys(aggs).map(col => ({column: col, op: aggs[col]}));
+        const found = new Set();
+        const new_aggs = Object.keys(aggs).map(col => {
+            found.add(col);
+            return {column: col, op: aggs[col]};
+        });
+        if (this._aggregate_defaults) {
+            for (const column of Object.keys(this._aggregate_defaults)) {
+                if (!found.has(column)) {
+                    new_aggs.push({
+                        column,
+                        op: this._aggregate_defaults[column]
+                    });
+                }
+            }
+        }
+        return new_aggs;
     }
 }

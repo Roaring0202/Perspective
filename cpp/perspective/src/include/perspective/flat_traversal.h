@@ -27,11 +27,11 @@
 namespace perspective {
 
 class PERSPECTIVE_EXPORT t_ftrav {
-    typedef tsl::hopscotch_map<t_tscalar, t_index> t_pkeyidx_map;
+    typedef tsl::hopscotch_map<t_tscalar, t_uindex> t_pkeyidx_map;
     typedef tsl::hopscotch_map<t_tscalar, t_mselem> t_pkmselem_map;
 
 public:
-    t_ftrav(bool handle_nan_sort);
+    t_ftrav();
 
     void init();
 
@@ -43,6 +43,7 @@ public:
 
     std::vector<t_tscalar> get_pkeys() const;
     std::vector<t_tscalar> get_pkeys(t_index begin_row, t_index end_row) const;
+    std::vector<t_tscalar> get_pkeys(const std::vector<t_uindex>& rows) const;
 
     t_tscalar get_pkey(t_index idx) const;
 
@@ -62,6 +63,8 @@ public:
 
     void get_row_indices(t_index bidx, t_index eidx, const tsl::hopscotch_set<t_tscalar>& pkeys,
         tsl::hopscotch_map<t_tscalar, t_index>& out_map) const;
+
+    std::vector<t_uindex> get_row_indices(const tsl::hopscotch_set<t_tscalar>& pkeys) const;
 
     void reset();
 
@@ -97,7 +100,6 @@ private:
     t_pkmselem_map m_new_elems;
     std::vector<t_sortspec> m_sortby;
     std::shared_ptr<std::vector<t_mselem>> m_index;
-    bool m_handle_nan_sort;
     t_symtable m_symtable;
 };
 
