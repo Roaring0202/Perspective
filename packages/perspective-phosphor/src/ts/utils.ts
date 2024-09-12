@@ -1,3 +1,6 @@
+import {PerspectiveWidget, PerspectiveWidgetOptions} from "./widget";
+import {DockLayout} from "@phosphor/widgets";
+
 /******************************************************************************
  *
  * Copyright (c) 2018, the Perspective Authors.

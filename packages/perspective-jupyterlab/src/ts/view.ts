@@ -16,7 +16,6 @@ import {PerspectiveJupyterClient, PerspectiveJupyterMessage} from "./client";
  * `PerspectiveView` defines the plugin's DOM and how the plugin interacts with
  * the DOM.
  */
-export class PerspectiveView extends DOMWidgetView {
     pWidget: PerspectiveWidget;  // this should be pWidget, but temporarily calling it pWidget for widgets incompatibilities
     perspective_client: PerspectiveJupyterClient;
 
