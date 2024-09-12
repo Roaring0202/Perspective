@@ -114,6 +114,8 @@ before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then npm install -g yarn; fi
 
 install:
+  - if [ "$TEST" = "CPP_OSX" ]; then brew install yarn; fi
+  - if [ "$TEST" = "PYTHON" ]; then nvm install 10.13.0 && nvm use 10.13.0; fi
   - node --version
   - yarn
 

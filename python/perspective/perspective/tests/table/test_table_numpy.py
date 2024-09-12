@@ -519,6 +519,7 @@ class TestTableNumpy(object):
         }
 
         # should not be able to parse mixed dicts of numpy array with list
+
         with raises(PerspectiveError):
             Table(data)
 
@@ -911,4 +912,10 @@ class TestTableNumpy(object):
         assert table.view().to_dict() == {
             "x": ["string1", "string3"],
             "y": ["string2", "string4"]
+        }
+
+        assert tbl.view().to_dict() == {
+            "a": [0, 1, 2, 3, 4],
+            "b": [None, None, None, None, None],
+            "c": [1.0, 2.0, 3.0, 2147483648.0, 5.0]
         }

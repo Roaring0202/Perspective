@@ -28,21 +28,7 @@ namespace binding {
 
 std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_val computed,
         std::uint32_t limit, py::str index, t_op op, bool is_update, bool is_arrow) {
-    bool table_initialized = !table.is_none();
-    std::shared_ptr<t_pool> pool;
-    std::shared_ptr<Table> tbl;
-    std::shared_ptr<t_gnode> gnode;
-    std::uint32_t offset;
-
-    // If the Table has already been created, use it
-    if (table_initialized) {
-        tbl = table.cast<std::shared_ptr<Table>>();
-        pool = tbl->get_pool();
-        gnode = tbl->get_gnode();
-        offset = tbl->get_offset();
-        is_update = (is_update || gnode->mapping_size() > 0);
-    }
-
+    auto t1 = std::chrono::high_resolution_clock::now();
     std::vector<std::string> column_names;
     std::vector<t_dtype> data_types;
     arrow::ArrowLoader arrow_loader;
@@ -183,7 +169,12 @@ std::shared_ptr<Table> make_table_py(t_val table, t_data_accessor accessor, t_va
     // calculate offset, limit, and set the gnode
     tbl->init(data_table, row_count, op);
 
-    //pool->_process();
+    // FIXME: replicate JS _clear_process etc.
+    pool->_process();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+    std::cout << "make_table: " << duration << std::endl;
     return tbl;
 }
 

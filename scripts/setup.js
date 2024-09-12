@@ -113,11 +113,6 @@ async function focus_package() {
                     key: "o",
                     name: "perspective-phosphor",
                     value: "perspective-phosphor"
-                },
-                {
-                    key: "l",
-                    name: "perspective-jupyterlab",
-                    value: "perspective-jupyterlab"
                 }
             ]
         }
