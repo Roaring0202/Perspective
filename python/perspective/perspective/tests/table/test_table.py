@@ -1,14 +1,20 @@
 # *****************************************************************************
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2019, the Perspective Authors.
 #
 # This file is part of the Perspective library, distributed under the terms of
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
-
-from perspective.table.libbinding import t_filter_op
+import six
+import sys
 from perspective.table import Table
 from datetime import date, datetime
+
+try:
+    from perspective.table.libbinding import t_filter_op
+except ImportError:
+    pass
 
 
 class TestTable(object):
@@ -26,6 +32,16 @@ class TestTable(object):
             "a": int,
             "b": int
         }
+
+    def test_table_int_overflow(self):
+        if six.PY2:
+            maxint = sys.maxint + 1
+            data = {"a": [i for i in range(100)] + [maxint, maxint, maxint]}
+            tbl = Table(data)
+            # two promotions later
+            assert tbl.schema() == {
+                "a": str
+            }
 
     def test_table_nones(self):
         none_data = [{"a": 1, "b": None}, {"a": None, "b": 2}]
@@ -62,6 +78,29 @@ class TestTable(object):
             "a": str,
             "b": str
         }
+
+    def test_table_str_with_escape(self):
+        str_data = [{"a": "abc\"def\"", "b": "abc\"def\""}, {"a": 'abc\'def\'', "b": 'abc\'def\''}]
+        tbl = Table(str_data)
+        assert tbl.size() == 2
+        assert tbl.schema() == {
+            "a": str,
+            "b": str
+        }
+        assert tbl.view().to_records() == str_data
+
+    def test_table_str_unicode(self):
+        if six.PY2:
+            str_data = [{"a": u"ȀȁȀȃȀȁȀȃȀȁȀȃȀȁȀȃ", "b": u"ЖДфйЖДфйЖДфйЖДфй"}]
+        else:
+            str_data = [{"a": "ȀȁȀȃȀȁȀȃȀȁȀȃȀȁȀȃ", "b": "ЖДфйЖДфйЖДфйЖДфй"}]
+        tbl = Table(str_data)
+        assert tbl.size() == 1
+        assert tbl.schema() == {
+            "a": str,
+            "b": str
+        }
+        assert tbl.view().to_records() == str_data
 
     def test_table_date(self):
         str_data = [{"a": date.today(), "b": date.today()}]
@@ -256,67 +295,67 @@ class TestTable(object):
         filter = ["a", "<", 1]
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
-        assert tbl.is_valid_filter(filter) == True
+        assert tbl.is_valid_filter(filter) is True
 
     def test_table_not_is_valid_filter_str(self):
         filter = ["a", "<", None]
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
-        assert tbl.is_valid_filter(filter) == False
+        assert tbl.is_valid_filter(filter) is False
 
     def test_table_is_valid_filter_filter_op(self):
         filter = ["a", t_filter_op.FILTER_OP_IS_NULL]
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
-        assert tbl.is_valid_filter(filter) == True
+        assert tbl.is_valid_filter(filter) is True
 
     def test_table_not_is_valid_filter_filter_op(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, None]
         data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         tbl = Table(data)
-        assert tbl.is_valid_filter(filter) == False
+        assert tbl.is_valid_filter(filter) is False
 
     def test_table_is_valid_filter_date(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, date.today()]
         tbl = Table({
             "a": date
         })
-        assert tbl.is_valid_filter(filter) == True
+        assert tbl.is_valid_filter(filter) is True
 
     def test_table_not_is_valid_filter_date(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, None]
         tbl = Table({
             "a": date
         })
-        assert tbl.is_valid_filter(filter) == False
+        assert tbl.is_valid_filter(filter) is False
 
     def test_table_is_valid_filter_datetime(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, datetime.now()]
         tbl = Table({
             "a": datetime
         })
-        assert tbl.is_valid_filter(filter) == True
+        assert tbl.is_valid_filter(filter) is True
 
     def test_table_not_is_valid_filter_datetime(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, None]
         tbl = Table({
             "a": datetime
         })
-        assert tbl.is_valid_filter(filter) == False
+        assert tbl.is_valid_filter(filter) is False
 
     def test_table_is_valid_filter_datetime_str(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, "7/11/2019 5:30PM"]
         tbl = Table({
             "a": datetime
         })
-        assert tbl.is_valid_filter(filter) == True
+        assert tbl.is_valid_filter(filter) is True
 
     def test_table_not_is_valid_filter_datetime_str(self):
         filter = ["a", t_filter_op.FILTER_OP_GT, None]
         tbl = Table({
             "a": datetime
         })
-        assert tbl.is_valid_filter(filter) == False
+        assert tbl.is_valid_filter(filter) is False
 
     # index
 

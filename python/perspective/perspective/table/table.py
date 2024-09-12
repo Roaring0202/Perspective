@@ -6,12 +6,16 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 from datetime import date, datetime
-from .libbinding import make_table, str_to_filter_op, t_filter_op, t_op, t_dtype
 from .view import View
 from ._accessor import _PerspectiveAccessor
 from ._callback_cache import _PerspectiveCallBackCache
 from ..core.exception import PerspectiveError
 from ._utils import _dtype_to_pythontype, _dtype_to_str
+
+try:
+    from .libbinding import make_table, str_to_filter_op, t_filter_op, t_op, t_dtype
+except ImportError:
+    pass
 
 
 class Table(object):
@@ -248,8 +252,6 @@ class Table(object):
         '''Delete this table and clean up associated resources in the core engine.
 
         Tables with associated views cannot be deleted.
-
-        Called when `__del__` is called by GC.
         '''
         if len(self._views) > 0:
             raise PerspectiveError("Cannot delete a Table with active views still linked to it - call delete() on each view, and try again.")

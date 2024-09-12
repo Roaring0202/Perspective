@@ -11,7 +11,7 @@ import rectangular from "rectangular";
 import superscript from "superscript-number";
 import lodash from "lodash";
 
-import cellRenderersRegistry from "fin-hypergrid/src/cellRenderers";
+import cellRenderersRegistry from "faux-hypergrid/src/cellRenderers";
 
 var Borders = cellRenderersRegistry.BaseClass.extend("Borders", {
     paint: function(gc, config) {
@@ -112,6 +112,7 @@ function setPSP(payload, force = false) {
     ) {
         this.grid.sbVScroller.index = 0;
         this.grid.behavior.dataModel.data = payload.rows;
+        this.grid.behavior.dataModel._data_window = undefined;
     } else {
         this.grid.sbVScroller.index = 0;
         this.grid.sbHScroller.index = 0;
@@ -483,7 +484,6 @@ export const install = function(grid) {
 
         this.bounds = new rectangular.Rectangle(0, 0, width, height);
         this.component.setBounds(this.bounds);
-        this.resizeNotification();
 
         let render = true;
         if (height * ratio !== this.canvas.height || width * ratio !== this.canvas.width || force) {
@@ -498,6 +498,7 @@ export const install = function(grid) {
 
         this.bounds = new rectangular.Rectangle(0, 0, width, height);
         this.component.setBounds(this.bounds);
+        this.resizeNotification();
 
         this.buffer.width = this.canvas.width = width * ratio;
         this.buffer.height = this.canvas.height = height * ratio;

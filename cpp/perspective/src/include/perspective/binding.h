@@ -24,10 +24,12 @@
 #include <random>
 #include <cmath>
 #include <sstream>
-#include <codecvt>
 
+#ifdef PSP_ENABLE_WASM
+#include <codecvt>
 typedef std::codecvt_utf8<wchar_t> utf8convert_type;
 typedef std::codecvt_utf8_utf16<wchar_t> utf16convert_type;
+#endif
 
 namespace perspective {
 
@@ -202,7 +204,6 @@ namespace binding {
      * @param name 
      * @param cidx 
      * @param type 
-     * @param is_arrow 
      * @param is_update 
      */
     template <typename T>
@@ -217,7 +218,6 @@ namespace binding {
      * @param tbl
      * @param accessor
      * @param input_schema 
-     * @param is_arrow
      * @param is_update
      */
     template <typename T>

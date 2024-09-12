@@ -17,7 +17,7 @@ import {PerspectiveJupyterClient, PerspectiveJupyterMessage} from "./client";
  */
 export class PerspectiveView extends DOMWidgetView {
     pWidget: PerspectiveWidget;
-    client: PerspectiveJupyterClient;
+    perspective_client: PerspectiveJupyterClient;
 
     _createElement(tagName: string) {
         this.pWidget = new PerspectiveJupyterWidget(undefined, {
@@ -36,7 +36,7 @@ export class PerspectiveView extends DOMWidgetView {
             view: this
         });
 
-        this.client = new PerspectiveJupyterClient(this);
+        this.perspective_client = new PerspectiveJupyterClient(this);
 
         return this.pWidget.node;
     }
@@ -108,7 +108,7 @@ export class PerspectiveView extends DOMWidgetView {
          *
          * If a table hasn't been loaded, the viewer won't get a response back and simply waits until it receives a table name.
          */
-        this.client.send({
+        this.perspective_client.send({
             id: -2,
             cmd: "table"
         });

@@ -15,6 +15,7 @@ const execute = cmd => execSync(cmd, {stdio: "inherit"});
 const VALID_TARGETS = ["node", "table"];
 const HAS_TARGET = args.indexOf("--target") != -1;
 const VERBOSE = args.indexOf("--verbose") != -1;
+const PY2 = args.indexOf("--python2") != -1;
 
 function docker(target = "perspective", image = "python") {
     console.log(`-- Creating ${image} docker image`);
@@ -27,24 +28,15 @@ function docker(target = "perspective", image = "python") {
 }
 
 try {
-    let target = "perspective";
-
-    if (HAS_TARGET) {
-        const new_target = args[args.indexOf("--target") + 1];
-        if (VALID_TARGETS.includes(new_target)) {
-            target = new_target;
-        }
-    }
-
     // dependencies need to be installed for test_python:table and test_python:node
     let cmd;
-
+    let python = PY2 ? 'python2': 'python3';
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/${target} && python3 -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
-        execute(`${docker(target, "python")} bash -c "${cmd}"`);
+        cmd = `cd python/perspective &&  ${python}  -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
+        execute(`${docker("perspective", "python")} bash -c "${cmd}"`);
     } else {
-        const python_path = resolve(__dirname, "..", "python", target);
-        cmd = `cd ${python_path} && python3 -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
+        const python_path = resolve(__dirname, "..", "python", "perspective");
+        cmd = `cd ${python_path} &&  ${python}  -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
         execute(cmd);
     }
 } catch (e) {
