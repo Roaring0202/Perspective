@@ -661,7 +661,7 @@ t_tscalar::to_string(bool for_expr) const {
             return ss.str();
         } break;
         case DTYPE_BOOL: {
-            ss << get<bool>();
+            ss << std::boolalpha << get<bool>();
             return ss.str();
         } break;
         case DTYPE_INT8: {
@@ -673,10 +673,9 @@ t_tscalar::to_string(bool for_expr) const {
             return ss.str();
         } break;
         case DTYPE_TIME: {
-            double timestamp = to_double() / 1000; // Unix timestamp in milliseconds
-            std::time_t temp = timestamp;
-            std::tm* t = std::gmtime(&temp);
-            ss << std::put_time(t, "%Y-%m-%d %H:%M:%S UTC");
+            std::chrono::milliseconds timestamp(to_int64());
+            date::sys_time<std::chrono::milliseconds> ts(timestamp);
+            ss << date::format("%Y-%m-%d %H:%M:%S", ts);
             return ss.str();
         } break;
         case DTYPE_STR: {

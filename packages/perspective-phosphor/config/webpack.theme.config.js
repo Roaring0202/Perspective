@@ -6,17 +6,23 @@ module.exports = {
     mode: "production",
     entry: {
         material: path.join(__dirname, "../src/theme/material/index.less"),
+        vaporwave: path.join(__dirname, "../src/theme/vaporwave/index.less")
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: "material.css",
+            filename: "[name].css",
             chunkFilename: "[id].css"
         }),
         new FixStyleOnlyEntriesPlugin()
     ],
-
+    performance: {
+        hints: false,
+        maxEntrypointSize: 512000,
+        maxAssetSize: 512000
+    },
+    stats: {modules: false, hash: false, version: false, builtAt: false, entrypoints: false},
     output: {
-        path: path.resolve(__dirname, "dist/themes/")
+        path: path.resolve(__dirname, "../dist/themes/")
     },
     module: {
         rules: [

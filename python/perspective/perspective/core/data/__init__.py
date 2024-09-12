@@ -1,4 +1,4 @@
-# *****************************************************************************
+################################################################################
 #
 # Copyright (c) 2019, the Perspective Authors.
 #
@@ -6,4 +6,5 @@
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
 
-from .pandas import deconstruct_pandas  # noqa: F401
+from .np import deconstruct_numpy   # noqa: F401
+from .pd import deconstruct_pandas  # noqa: F401

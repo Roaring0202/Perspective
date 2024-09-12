@@ -635,8 +635,9 @@ namespace binding {
                 } else if (value == "date") {
                     type = t_dtype::DTYPE_DATE;
                 } else {
-                    PSP_COMPLAIN_AND_ABORT(
-                        "Unknown type '" + value + "' for key '" + name + "'");
+                    std::stringstream ss;
+                    ss << "Unknown type '" << value << "' for key '" << name << "'" << std::endl;
+                    PSP_COMPLAIN_AND_ABORT(ss.str());
                 }
 
                 types.push_back(type);
@@ -777,7 +778,7 @@ namespace binding {
             }
 
             double fval = item.as<double>();
-            if (isnan(fval)) {
+            if (!is_update && isnan(fval)) {
                 std::cout << "Promoting to string" << std::endl;
                 tbl.promote_column(name, DTYPE_STR, i, false);
                 col = tbl.get_column(name);
@@ -822,13 +823,13 @@ namespace binding {
                     // float value in an inferred column. Would not be needed if the type
                     // inference checked the entire column/we could reset parsing.
                     double fval = item.as<double>();
-                    if (fval > 2147483647 || fval < -2147483648) {
+                    if (!is_update && (fval > 2147483647 || fval < -2147483648)) {
                         std::cout << "Promoting to float" << std::endl;
                         tbl.promote_column(name, DTYPE_FLOAT64, i, true);
                         col = tbl.get_column(name);
                         type = DTYPE_FLOAT64;
                         col->set_nth(i, fval);
-                    } else if (isnan(fval)) {
+                    } else if (!is_update && isnan(fval)) {
                         std::cout << "Promoting to string" << std::endl;
                         tbl.promote_column(name, DTYPE_STR, i, false);
                         col = tbl.get_column(name);
@@ -1122,6 +1123,21 @@ namespace binding {
     std::shared_ptr<Table>
     make_table(t_val table, t_data_accessor accessor, t_val computed,
         std::uint32_t limit, const std::string& index, t_op op, bool is_update, bool is_arrow) {
+        bool table_initialized = has_value(table);
+        std::shared_ptr<t_pool> pool;
+        std::shared_ptr<Table> tbl;
+        std::shared_ptr<t_gnode> gnode;
+        std::uint32_t offset;
+
+        // If the Table has already been created, use it
+        if (table_initialized) {
+            tbl = table.as<std::shared_ptr<Table>>();
+            pool = tbl->get_pool();
+            gnode = tbl->get_gnode();
+            offset = tbl->get_offset();
+            is_update = (is_update || gnode->mapping_size() > 0);
+        }
+
         std::vector<std::string> column_names;
         std::vector<t_dtype> data_types;
         arrow::ArrowLoader loader;
@@ -1129,16 +1145,14 @@ namespace binding {
 
         // Determine metadata
         bool is_delete = op == OP_DELETE;
-        if (is_arrow) {
-
-            // Get details of the Typed Array from JS
+        if (is_arrow && !is_delete) {
             t_val constructor = accessor["constructor"];
             std::int32_t length = accessor["byteLength"].as<std::int32_t>();
 
             // Allocate memory 
             ptr = reinterpret_cast<std::uintptr_t>(malloc(length));
             if (ptr == NULL) {
-                std::cout << "ERROR" << std::endl;
+                std::cout << "Unable to load arrow of size 0" << std::endl;
                 return nullptr;
             }
 
@@ -1146,11 +1160,54 @@ namespace binding {
             t_val memory = t_val::module_property("HEAP8")["buffer"];
             t_val memoryView = constructor.new_(memory, ptr, length);
             memoryView.call<void>("set", accessor);
-            
-            // Dispatch to the core library
+
+            // Parse the arrow and get its metadata
             loader.initialize(ptr, length);
-            column_names = loader.names();
-            data_types = loader.types();
+            
+            // Always use the `Table` column names and data types on up
+            if (table_initialized && is_update) {
+                auto schema = gnode->get_tblschema();
+                column_names = schema.columns();
+                data_types = schema.types();
+
+                auto data_table = gnode->get_table();
+                if (data_table->size() == 0) {
+                    /**
+                     * If updating a table created from schema, a 32-bit int/float
+                     * needs to be promoted to a 64-bit int/float if specified in
+                     * the Arrow schema.
+                     */
+                    std::vector<t_dtype> arrow_dtypes = loader.types();
+                    for (auto idx = 0; idx < column_names.size(); ++idx) {
+                        const std::string& name = column_names[idx];
+                        bool can_retype = name != "psp_okey" && name != "psp_pkey" && name != "psp_op";
+                        bool is_32_bit = data_types[idx] == DTYPE_INT32 || data_types[idx] == DTYPE_FLOAT32;
+                        if (can_retype && is_32_bit) {
+                            t_dtype arrow_dtype = arrow_dtypes[idx];
+                            switch (arrow_dtype) {
+                                case DTYPE_INT64:
+                                case DTYPE_FLOAT64: {
+                                    std::cout << "Promoting column `" 
+                                                << column_names[idx] 
+                                                << "` to maintain consistency with Arrow type."
+                                                << std::endl;
+                                    gnode->promote_column(name, arrow_dtype);
+                                } break;
+                                default: {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
+                    // Updated data types need to reflect in new data table
+                    auto new_schema = gnode->get_tblschema();
+                    data_types = new_schema.types();
+                }
+            } else {
+                column_names = loader.names();
+                data_types = loader.types();
+            }
         } else if (is_update || is_delete) {
             t_val names = accessor["names"];
             t_val types = accessor["types"];
@@ -1164,37 +1221,7 @@ namespace binding {
             data_types = get_data_types(data, format, column_names, accessor["date_validator"]);
         }
 
-        bool table_initialized = has_value(table);
-        std::shared_ptr<Table> tbl;
-        std::uint32_t offset;
-
-        // If the Table has already been created, use it
-        if (table_initialized) {
-            // Get a reference to the Table, and update its metadata
-            tbl = table.as<std::shared_ptr<Table>>();
-            tbl->set_column_names(column_names);
-            tbl->set_data_types(data_types);
-            offset = tbl->get_offset();
-
-            auto current_gnode = tbl->get_gnode();
-
-            // use gnode metadata to help decide if we need to update
-            is_update = (is_update || current_gnode->mapping_size() > 0);
-
-            // if performing an arrow schema update, promote columns
-            auto current_data_table = current_gnode->get_table();
-
-            if (is_arrow && is_update && current_data_table->size() == 0) {
-                auto current_schema = current_data_table->get_schema();
-                for (auto idx = 0; idx < current_schema.m_types.size(); ++idx) {
-                    if (data_types[idx] == DTYPE_INT64) {
-                        std::cout << "Promoting int64 `" << column_names[idx] << "`"
-                                  << std::endl;
-                        current_gnode->promote_column(column_names[idx], DTYPE_INT64);
-                    }
-                }
-            }
-        } else {
+        if (!table_initialized) {
             std::shared_ptr<t_pool> pool = std::make_shared<t_pool>();
             tbl = std::make_shared<Table>(
                 pool, column_names, data_types, limit, index);
@@ -1218,7 +1245,7 @@ namespace binding {
 
         std::uint32_t row_count = 0;
         if (is_arrow) {
-            row_count = loader.num_rows();
+            row_count = loader.row_count();
         } else {
             row_count = accessor["row_count"].as<std::int32_t>();
         }
@@ -1340,9 +1367,17 @@ namespace binding {
             = t_val::global("Object").call<t_val>("keys", config["aggregates"]);
         auto aggregate_names = vecFromArray<t_val, std::string>(j_aggregate_keys);
 
-        tsl::ordered_map<std::string, std::string> aggregates;
+        tsl::ordered_map<std::string, std::vector<std::string>> aggregates;
         for (const auto& name : aggregate_names) {
-            aggregates[name] = config["aggregates"][name].as<std::string>();
+            t_val val = config["aggregates"][name];
+            bool is_array = t_val::global("Array").call<bool>("isArray", val);
+            if (is_array) {
+                auto agg = vecFromArray<t_val, std::string>(val);
+                aggregates[name] = agg;
+            } else {
+                std::vector<std::string> agg {val.as<std::string>()};
+                aggregates[name] = agg;
+            }
         };
 
         bool column_only = false;
@@ -1576,14 +1611,16 @@ main(int argc, char** argv) {
 EM_ASM({
 
     if (typeof self !== "undefined") {
-        if (self.dispatchEvent && !self._perspective_initialized && self.document) {
-            self._perspective_initialized = true;
-            var event = self.document.createEvent("Event");
-            event.initEvent("perspective-ready", false, true);
-            self.dispatchEvent(event);
-        } else if (!self.document && self.postMessage) {
-            self.postMessage({});
-        }
+        try {
+            if (self.dispatchEvent && !self._perspective_initialized && self.document !== null) {
+                self._perspective_initialized = true;
+                var event = self.document.createEvent("Event");
+                event.initEvent("perspective-ready", false, true);
+                self.dispatchEvent(event);
+            } else if (!self.document && self.postMessage) {                
+                self.postMessage({});
+            }
+        } catch (e) {}
     }
 
 });
@@ -1627,6 +1664,7 @@ EMSCRIPTEN_BINDINGS(perspective) {
         .function("get_row_expanded", &View<t_ctx0>::get_row_expanded)
         .function("schema", &View<t_ctx0>::schema)
         .function("column_names", &View<t_ctx0>::column_names)
+        .function("column_paths", &View<t_ctx0>::column_paths)
         .function("_get_deltas_enabled", &View<t_ctx0>::_get_deltas_enabled)
         .function("_set_deltas_enabled", &View<t_ctx0>::_set_deltas_enabled)
         .function("get_context", &View<t_ctx0>::get_context, allow_raw_pointers())
@@ -1653,6 +1691,7 @@ EMSCRIPTEN_BINDINGS(perspective) {
         .function("set_depth", &View<t_ctx1>::set_depth)
         .function("schema", &View<t_ctx1>::schema)
         .function("column_names", &View<t_ctx1>::column_names)
+        .function("column_paths", &View<t_ctx1>::column_paths)
         .function("_get_deltas_enabled", &View<t_ctx1>::_get_deltas_enabled)
         .function("_set_deltas_enabled", &View<t_ctx1>::_set_deltas_enabled)
         .function("get_context", &View<t_ctx1>::get_context, allow_raw_pointers())
@@ -1679,6 +1718,7 @@ EMSCRIPTEN_BINDINGS(perspective) {
         .function("set_depth", &View<t_ctx2>::set_depth)
         .function("schema", &View<t_ctx2>::schema)
         .function("column_names", &View<t_ctx2>::column_names)
+        .function("column_paths", &View<t_ctx2>::column_paths)
         .function("_get_deltas_enabled", &View<t_ctx2>::_get_deltas_enabled)
         .function("_set_deltas_enabled", &View<t_ctx2>::_set_deltas_enabled)
         .function("get_context", &View<t_ctx2>::get_context, allow_raw_pointers())
@@ -1699,7 +1739,7 @@ EMSCRIPTEN_BINDINGS(perspective) {
      */
     class_<t_view_config>("t_view_config")
         .constructor<std::vector<std::string>, std::vector<std::string>,
-            tsl::ordered_map<std::string, std::string>, std::vector<std::string>,
+            tsl::ordered_map<std::string, std::vector<std::string>>, std::vector<std::string>,
             std::vector<std::tuple<std::string, std::string, std::vector<t_tscalar>>>,
             std::vector<std::vector<std::string>>, std::string, bool>()
         .function("add_filter_term", &t_view_config::add_filter_term);
@@ -1875,7 +1915,8 @@ EMSCRIPTEN_BINDINGS(perspective) {
         .value("DTYPE_STR", DTYPE_STR)
         .value("DTYPE_USER_VLEN", DTYPE_USER_VLEN)
         .value("DTYPE_LAST_VLEN", DTYPE_LAST_VLEN)
-        .value("DTYPE_LAST", DTYPE_LAST);
+        .value("DTYPE_LAST", DTYPE_LAST)
+        .value("DTYPE_OBJECT", DTYPE_OBJECT);
 
     /******************************************************************************
      *

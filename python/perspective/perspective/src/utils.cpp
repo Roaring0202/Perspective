@@ -20,8 +20,8 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
     auto type = t_dtype::DTYPE_STR;
 
     // TODO consider refactor
-    if (value == "int" || value == "integer") {
-        // Python int
+    if (value == "int" || value == "integer" || value == "int64" || value == "long") {
+        // Python int, long, and Numpy int64
         type = t_dtype::DTYPE_INT64;
     } else if (value == "int8") {
         // Numpy int8
@@ -32,9 +32,6 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
     } else if (value == "int32") {
         // Numpy int32
         type = t_dtype::DTYPE_INT32;
-    } else if (value == "int64") {
-        // Numpy int64
-        type = t_dtype::DTYPE_INT64;
     } else if (value == "float") {
         // Python float
         type = t_dtype::DTYPE_FLOAT64;
@@ -53,7 +50,7 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
         // TODO
         // Numpy float128
         type = t_dtype::DTYPE_FLOAT64;
-    } else if (value == "str" || value == "string") {
+    } else if (value == "str" || value == "string" || value == "unicode") {
         // Python unicode str
         type = t_dtype::DTYPE_STR;
     } else if (value == "bool" || value == "boolean") {
@@ -75,10 +72,16 @@ t_dtype type_string_to_t_dtype(std::string value, std::string name){
     } else if (value == "Timestamp") {
         // Pandas timestamp
         type = t_dtype::DTYPE_TIME;
+    } else if (value == "Period") {
+        // Pandas period
+        type = t_dtype::DTYPE_TIME;
     } else if (value == "date") {
         // Python date
         // TODO inheritance
         type = t_dtype::DTYPE_DATE;
+    } else if (value == "timedelta64" || value == "time") {
+        // cast time/timedelta to string to preserve units
+        type = t_dtype::DTYPE_STR;
     } else {
         CRITICAL("Unknown type '%s' for key '%s'", value, name);
     }
@@ -111,13 +114,16 @@ scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
             } else if (cast_string) {
                 return py::cast(scalar.to_string(false)); // should reimplement
             } else {
+                // Stored timestamp should always be milliseconds
                 auto ms = std::chrono::milliseconds(scalar.to_int64());
                 auto time_point = std::chrono::time_point<std::chrono::system_clock>(ms);
                 return py::cast(time_point);
             }
         }
-        case DTYPE_FLOAT64:
         case DTYPE_FLOAT32: {
+            return py::cast(scalar.get<float>());
+        }
+        case DTYPE_FLOAT64: {
             if (cast_double) {
                 auto x = scalar.to_uint64();
                 double y = *reinterpret_cast<double*>(&x);
@@ -138,12 +144,9 @@ scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
         case DTYPE_UINT32:
         case DTYPE_INT8:
         case DTYPE_INT16:
-        case DTYPE_INT32: {
-            return py::cast(scalar.to_int64());
-        }
+        case DTYPE_INT32:
         case DTYPE_UINT64:
         case DTYPE_INT64: {
-            // This could potentially lose precision
             return py::cast(scalar.to_int64());
         }
         case DTYPE_NONE: {
@@ -151,7 +154,6 @@ scalar_to_py(const t_tscalar& scalar, bool cast_double, bool cast_string) {
         }
         case DTYPE_STR:
         default: {
-            std::wstring_convert<utf8convert_type, wchar_t> converter("", L"<Invalid>");
             return py::cast(scalar.to_string());
         }
     }

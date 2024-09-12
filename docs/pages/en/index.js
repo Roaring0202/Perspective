@@ -57,7 +57,7 @@ const Logo = props => (
 
 const ProjectTitle = props => (
     <h2 className="projectTitle">
-        {siteConfig.title}
+        <perspective-logo />
         <small>
             Streaming Analytics <i>via</i> WebAssembly
         </small>
@@ -119,7 +119,14 @@ const PerspectiveBlock = props => {
     }
     return (
         <Container padding={["bottom", "top"]} id={props.id} background={props.background}>
-            <div className={classNames({imageAlignRight: !!afterImage, imageAlignLeft: !!beforeImage, imageAlignSide: true})} key={block.title}>
+            <div
+                className={classNames({
+                    imageAlignRight: !!afterImage,
+                    imageAlignLeft: !!beforeImage,
+                    imageAlignSide: true
+                })}
+                key={block.title}
+            >
                 {beforeImage}
                 <div className="blockContent">
                     <h2>
@@ -168,11 +175,11 @@ const FeatureCallout = props => (
             An embeddable, framework-agnostic configuration UI, based on [Web Components](https://www.webcomponents.org/), and a WebWorker engine host for responsiveness at high frequency.
         </MarkdownBlock>
         <MarkdownBlock>
-            A suite of simple visualization plugins for some common Javascript libraries such as [D3FC](), [Hypergrid](https://github.com/fin-hypergrid/core) and
+            A suite of simple visualization plugins for some common Javascript libraries such as [D3FC](https://d3fc.io/), [Hypergrid](https://github.com/fin-hypergrid/core) and
             [HighCharts](https://github.com/highcharts/highcharts).
         </MarkdownBlock>
         <MarkdownBlock>Integration with Jupyterlab.</MarkdownBlock>
-        <MarkdownBlock>Runtimes for the Browser and Node.js.</MarkdownBlock>
+        <MarkdownBlock>Runtimes for the browser, Python, and Node.js.</MarkdownBlock>
     </Container>
 );
 
@@ -182,10 +189,11 @@ Originally developed for J.P. Morgan's trading business, Perspective is
 an <i>interactive</i> visualization component for <i>large</i>, <i>real-time</i>
 datasets.  Use it to build reports, dashboards, notebooks and applications.
 Perspective comes with:
-* A fast, memory efficient streaming query engine, written in C++ and compiled to [WebAssembly](), with read/write/stream support for [Apache Arrow]().
+* A fast, memory efficient streaming query engine, written in C++ and compiled to [WebAssembly](https://webassembly.org/), with read/write/stream support for [Apache Arrow]().
 * A framework-agnostic query configuration UI component, based on [Web Components](https://www.webcomponents.org/), and a WebWorker and/or WebSocket data engine host for stable interactivity at high frequency.
 * A suite of simple, context-aware visualization plugins for some common Javascript libraries such as [D3FC](https://d3fc.io/) and [Hypergrid](https://github.com/fin-hypergrid/core).
-* Integration with [Jupyterlab](), Runtimes for the Browser and Node.js.
+* Integration with [Jupyterlab](https://jupyterlab.readthedocs.io/en/stable/).
+* Runtimes for the browser, Python, and Node.js.
 `;
 
 const Description = props => (
@@ -246,14 +254,8 @@ const Showcase = props => {
 
     return (
         <div className="productShowcaseSection paddingBottom">
-            <h2>{"Who's Using This?"}</h2>
-            <p>This project is used by all these people</p>
+            <h2>{""}</h2>
             <div className="logos">{showcase}</div>
-            <div className="more-users">
-                <a className="button" href={pageUrl("users.html", props.language)}>
-                    More {siteConfig.title} Users
-                </a>
-            </div>
         </div>
     );
 };

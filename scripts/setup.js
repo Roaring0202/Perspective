@@ -51,15 +51,22 @@ const CONFIG = new Proxy(
     }
 );
 
+const PROMPT_DEBUG = {
+    type: "confirm",
+    name: "PSP_DEBUG",
+    message: "Run debug build?",
+    default: CONFIG["PSP_DEBUG"] || false
+};
+
+const PROMPT_DOCKER = {
+    type: "confirm",
+    name: "PSP_DOCKER",
+    message: "Use docker for build env?",
+    default: CONFIG["PSP_DOCKER"] || false
+};
+
 async function choose_docker() {
-    const answers = await inquirer.prompt([
-        {
-            type: "confirm",
-            name: "PSP_DOCKER",
-            message: "Use docker for build env?",
-            default: CONFIG["PSP_DOCKER"] || false
-        }
-    ]);
+    const answers = await inquirer.prompt([PROMPT_DOCKER]);
     CONFIG.add(answers);
     CONFIG.write();
 }
@@ -116,31 +123,28 @@ async function focus_package() {
 
 async function javascript_options() {
     const new_config = await inquirer.prompt([
-        {
-            type: "confirm",
-            name: "PSP_DEBUG",
-            message: "Run debug build?",
-            default: CONFIG["PSP_DEBUG"] || false
-        },
-        {
-            type: "confirm",
-            name: "PSP_DOCKER",
-            message: "Use docker for build env?",
-            default: CONFIG["PSP_DOCKER"] || false
-        },
+        PROMPT_DEBUG,
+        PROMPT_DOCKER,
         {
             type: "confirm",
             name: "PSP_DOCKER_PUPPETEER",
             message: "Use docker for puppeteer tests?",
-            default: CONFIG["PSP_DOCKER_PUPPETEER"] || true
+            default: !CONFIG["PSP_DOCKER_PUPPETEER"]
         }
     ]);
-    const local_puppeteer = !fs.existsSync("node_modules/puppeteer");
+    new_config.PSP_DOCKER_PUPPETEER = !new_config.PSP_DOCKER_PUPPETEER;
+    const local_puppeteer = fs.existsSync("node_modules/puppeteer");
     CONFIG.add(new_config);
     CONFIG.write();
     if (local_puppeteer !== new_config.PSP_DOCKER_PUPPETEER) {
         require("./toggle_puppeteer");
     }
+}
+
+async function python_options() {
+    const new_config = await inquirer.prompt([PROMPT_DEBUG, PROMPT_DOCKER]);
+    CONFIG.add(new_config);
+    CONFIG.write();
 }
 
 async function choose_project() {
@@ -177,10 +181,20 @@ async function choose_project() {
     ]);
     CONFIG.add(answers);
     CONFIG.write();
-    if (CONFIG.PSP_PROJECT === "js") {
-        await focus_package();
-    } else {
-        await choose_docker();
+    switch (CONFIG.PSP_PROJECT) {
+        case "js":
+            {
+                await focus_package();
+            }
+            break;
+        case "python":
+            {
+                await python_options();
+            }
+            break;
+        default: {
+            choose_docker();
+        }
     }
 }
 

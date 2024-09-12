@@ -7,8 +7,9 @@
  *
  */
 
-import Behavior from "fin-hypergrid/src/behaviors/Behavior";
+import Behavior from "faux-hypergrid/src/behaviors/Behavior";
 import {get_type_config} from "@finos/perspective/dist/esm/config/index.js";
+import {page2hypergrid} from "./psp-to-hypergrid";
 
 const {
     prototype: {treeColumnIndex: TREE_COLUMN_INDEX}
@@ -24,11 +25,36 @@ function get_rect(nrows) {
 
 function find_row(rows, index) {
     for (let ridx in rows) {
-        if (rows[ridx].__INDEX__ === index) {
+        if (rows[ridx].__ID__ === index) {
             return parseInt(ridx);
         }
     }
     return -1;
+}
+
+const _wrapper = function(f) {
+    return async function(_, resolve) {
+        let is_error;
+        try {
+            is_error = await f.call(this);
+        } catch (e) {
+            resolve(e);
+            return;
+        }
+        resolve(is_error);
+    };
+};
+
+function pad_data_window(rect, rowPivots = [], selection = false) {
+    const range = {
+        start_row: rect.origin.y,
+        end_row: rect.corner.y + 1,
+        start_col: rect.origin.x,
+        end_col: rect.corner.x + 3
+    };
+    range.end_col += rowPivots && rowPivots.length > 0 ? 1 : 0;
+    range.id = selection;
+    return range;
 }
 
 export default require("datasaur-local").extend("PerspectiveDataModel", {
@@ -70,7 +96,6 @@ export default require("datasaur-local").extend("PerspectiveDataModel", {
         }
         this._dirty = true;
         this._nrows = nrows;
-        this._grid.behaviorChanged();
     },
 
     // Called when clicking on a row group expand
@@ -105,11 +130,18 @@ export default require("datasaur-local").extend("PerspectiveDataModel", {
     },
 
     _update_select_index: function() {
-        const has_selections = this._grid.selectionModel.hasSelections();
-        if (has_selections) {
-            const row = this.data[this._grid.selectionModel.getLastSelection().origin.y];
-            if (row) {
-                this._select_index = row.__INDEX__;
+        const has_cell_selections = this._grid.selectionModel.hasSelections();
+        const has_row_selections = this._grid.selectionModel.hasRowSelections();
+        if (has_cell_selections) {
+            const row_data = this.data[this._grid.selectionModel.getLastSelection().origin.y];
+            if (row_data) {
+                this._selected_cell_index = row_data.__ID__;
+            }
+        }
+        if (has_row_selections) {
+            const row_data = this.data[this._grid.getSelectedRows()[0]];
+            if (row_data) {
+                this._selected_row_index = row_data.__ID__;
             }
         }
     },
@@ -126,60 +158,72 @@ export default require("datasaur-local").extend("PerspectiveDataModel", {
     },
 
     _update_selection: function(new_index) {
-        const has_selections = this._grid.selectionModel.hasSelections();
-        if (has_selections) {
-            new_index = new_index || find_row(this.data, this._select_index);
+        const has_cell_selections = this._grid.selectionModel.hasSelections();
+        if (has_cell_selections) {
+            new_index = new_index || find_row(this.data, this._selected_cell_index);
             if (new_index !== -1) {
                 const col = this._grid.selectionModel.getLastSelection().origin.x;
                 this._grid.selectionModel.select(col, new_index, 0, 0);
             }
         }
+        if (this._selected_row_index) {
+            this._grid.selectionModel.clearRowSelection();
+            const row_index = new_index || find_row(this.data, this._selected_row_index);
+            if (row_index !== -1) {
+                this._grid.selectionModel.selectRow(row_index);
+            }
+        }
     },
 
-    fetchData: async function(_, resolve) {
+    pspFetch: async function(rect) {
+        const selection_enabled = this._grid.properties.rowSelection || this._viewer.hasAttribute("editable");
+        const range = pad_data_window(rect, this._config.row_pivots, this._viewer.hasAttribute("settings"), selection_enabled);
+        const next_page = await this._view.to_columns(range);
+        this.data = [];
+        const rows = page2hypergrid(next_page, this._config.row_pivots, this._columns);
+        const base = range.start_row;
+        const data = this.data;
+        rows.forEach((row, offset) => (data[base + offset] = row));
+    },
+
+    fetchData: _wrapper(async function() {
         if (this._view === undefined) {
-            resolve(true);
-            return;
+            return true;
         }
 
         let rect = get_rect.call(this._grid.renderer);
 
-        if (!this._dirty && !uncachedRow.call(this._data_window, rect)) {
-            resolve(false);
+        if (!this._dirty && !is_cache_miss(rect, this._data_window)) {
             return;
         }
 
         this._grid.renderer.needsComputeCellsBounds = true;
 
-        if (this._outstanding_rect && !uncachedRow.call(this._oustanding_rect, rect)) {
-            resolve(true);
-            return;
+        if (this._outstanding && !is_cache_miss(rect, this._outstanding.rect)) {
+            await this._outstanding.req;
+            this._grid.renderer.needsComputeCellsBounds = true;
+            return true;
         }
 
-        this._outstanding_rect = rect;
         this._dirty = false;
-
-        const action = this.pspFetch({
-            start_row: rect.origin.y,
-            end_row: rect.corner.y,
-            start_col: rect.origin.x,
-            end_col: rect.corner.x + 1
-        });
+        const req = this.pspFetch(rect);
+        this._outstanding = {rect, req};
+        this._update_select_index();
 
         try {
-            this._update_select_index();
-            await action;
-            this._data_window = rect;
-            this._outstanding_rect = undefined;
-            const new_index = this._update_editor(rect);
-            this._update_selection(new_index);
-            rect = get_rect.call(this._grid.renderer);
-            this._grid.renderer.needsComputeCellsBounds = !!uncachedRow.call(this._data_window, rect);
-            resolve(this._grid.renderer.needsComputeCellsBounds);
-        } catch (e) {
-            resolve(e);
+            await req;
+        } finally {
+            this._outstanding = undefined;
+            this._grid.renderer.needsComputeCellsBounds = true;
         }
-    },
+
+        this._data_window = rect;
+        this._update_selection(this._update_editor(rect));
+
+        rect = get_rect.call(this._grid.renderer);
+        const ret = is_cache_miss(rect, this._data_window);
+        return ret;
+    }),
 
     getCellEditorAt: function(columnIndex, rowIndex, declaredEditorName, options) {
         if (!declaredEditorName) {
@@ -200,7 +244,7 @@ export default require("datasaur-local").extend("PerspectiveDataModel", {
         editor._table = this._table;
         editor._data = this.data;
         editor._canvas = this._grid.canvas.canvas;
-        editor._index = this.data[rowIndex + offset - 1].__INDEX__;
+        editor._index = this.data[rowIndex + offset - 1].__ID__;
         return editor;
     },
 
@@ -218,11 +262,15 @@ export default require("datasaur-local").extend("PerspectiveDataModel", {
         return config.grid.cellRenderers.get(rendererName);
     },
 
-    pspFetch: async function() {}
+    clearSelectionState: function() {
+        this._selected_row_index = undefined;
+        this._selected_cell_index = undefined;
+        this._grid.selectionModel.clear();
+    }
 });
 
-function uncachedRow(rect) {
-    return !this || this.top !== rect.top || this.height !== rect.height || this.left !== rect.left || this.width !== rect.width;
+function is_cache_miss(req, cache) {
+    return !cache || req.top !== cache.top || req.top + req.height !== cache.top + cache.height || req.left !== cache.left || req.left + req.width !== cache.left + cache.width;
 }
 
 function cellStyle(gridCellConfig) {

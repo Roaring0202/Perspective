@@ -1,11 +1,24 @@
 {
     "name": "@finos/perspective-viewer",
-    "version": "0.3.9",
+    "version": "0.4.0-rc.6",
     "description": "Perspective.js",
     "main": "dist/cjs/perspective-viewer.js",
-    "browser": "dist/cjs/perspective-viewer.js",
     "module": "dist/cjs/perspective-viewer.js",
     "unpkg": "dist/umd/perspective-viewer.js",
+    "browser": {
+        "themes/all-themes.less": "./dist/themes/all-themes.less",
+        "themes/all-themes.css": "./dist/umd/all-themes.css",
+        "themes/material.less": "./dist/themes/material.less",
+        "themes/material.css": "./dist/umd/material.css",
+        "themes/material.dark.less": "./dist/themes/material.dark.less",
+        "themes/material.dark.css": "./dist/umd/material.dark.css",
+        "themes/vaporwave.less": "./dist/themes/vaporwave.less",
+        "themes/vaporwave.css": "./dist/umd/vaporwave.css",
+        "themes/material-dense.less": "./dist/themes/material-dense.less",
+        "themes/material-dense.css": "./dist/umd/material-dense.css",
+        "themes/material-dense.dark.less": "./dist/themes/material-dense.dark.less",
+        "themes/material-dense.dark.css": "./dist/umd/material-dense.dark.css"
+    },
     "files": [
         "dist/**/*",
         "index.d.ts"
@@ -28,7 +41,7 @@
         "clean:screenshots": "rimraf \"screenshots/**/*.@(failed|diff).png\"",
         "docs": "npm-run-all docs:jsdoc docs:deploy",
         "docs:jsdoc": "jsdoc2md src/js/viewer.js -p list --separators --no-gfm > README.md",
-        "docs:deploy": "(echo \"---\nid: perspective-viewer\ntitle: \\`perspective-viewer\\` API\n---\n\n\"; cat README.md) > ../../docs/obj/perspective-viewer.md"
+        "docs:deploy": "(echo \"---\nid: perspective-viewer\ntitle: perspective-viewer API\n---\n\n\"; cat README.md) > ../../docs/obj/perspective-viewer.md"
     },
     "publishConfig": {
         "access": "public"
@@ -41,7 +54,7 @@
     "license": "Apache-2.0",
     "dependencies": {
         "@babel/runtime": "^7.3.4",
-        "@finos/perspective": "^0.3.9",
+        "@finos/perspective": "^0.4.0-rc.6",
         "@webcomponents/shadycss": "^1.5.2",
         "@webcomponents/webcomponentsjs": "~2.0.4",
         "awesomplete": "^1.1.2",
@@ -50,10 +63,10 @@
         "detectie": "1.0.0",
         "lit-html": "^1.1.2",
         "lodash": "^4.17.4",
-        "mobile-drag-drop": "^2.2.0"
+        "mobile-drag-drop": "^2.3.0-rc.2"
     },
     "devDependencies": {
-        "@finos/perspective-test": "^0.3.9",
-        "@finos/perspective-webpack-plugin": "^0.3.8"
+        "@finos/perspective-test": "^0.4.0-rc.6",
+        "@finos/perspective-webpack-plugin": "^0.4.0-rc.6"
     }
 }

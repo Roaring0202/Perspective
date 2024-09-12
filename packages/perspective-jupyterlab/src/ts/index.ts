@@ -9,7 +9,6 @@
 
 export * from "./client";
 export * from "./model";
-export * from "./plugin";
 export * from "./version";
 export * from "./view";
 export * from "./widget";

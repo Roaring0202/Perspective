@@ -23,6 +23,7 @@
 #include <perspective/none.h>
 #include <perspective/gnode.h>
 #include <perspective/sym_table.h>
+#include <perspective/exception.h>
 #include <gtest/gtest.h>
 #include <random>
 #include <limits>
@@ -44,9 +45,7 @@ TEST(GNODE, explicit_pkey)
     t_gnode_options options;
     options.m_gnode_type = GNODE_TYPE_PKEYED;
     options.m_port_schema = t_schema{{"x"}, {DTYPE_INT64}};
-#ifndef WIN32
-    EXPECT_EXIT(t_gnode::build(options), ::testing::KilledBySignal(SIGINT), "");
-#endif
+    ASSERT_THROW(t_gnode::build(options), PerspectiveException);
 }
 
 
@@ -248,7 +247,7 @@ TEST(SCALAR, scalar_repr)
     EXPECT_EQ(mktscalar<float>(0).repr(), "f32:v:0");
     EXPECT_EQ(mktscalar<t_date>(t_date(0)).repr(), "date:v:0-00-00");
     EXPECT_EQ(
-        mktscalar<t_time>(t_time(0)).repr(), "time:v:1970-01-01 00:00:00 UTC");
+        mktscalar<t_time>(t_time(0)).repr(), "time:v:1970-01-01 00:00:00.000");
     EXPECT_EQ(mktscalar<const char*>("").repr(), "str:v:");
 
     EXPECT_EQ(mknull(DTYPE_NONE).repr(), "none:i:null");

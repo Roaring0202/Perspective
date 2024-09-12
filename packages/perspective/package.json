@@ -1,6 +1,6 @@
 {
     "name": "@finos/perspective",
-    "version": "0.3.9",
+    "version": "0.4.0-rc.6",
     "description": "Perspective.js",
     "main": "dist/umd/perspective.node.js",
     "unpkg": "dist/umd/perspective.js",
@@ -26,7 +26,7 @@
         "build:webpack:node": "webpack --color --config src/config/perspective.node.config.js",
         "docs": "npm-run-all docs:jsdoc docs:deploy",
         "docs:jsdoc": "jsdoc2md src/js/perspective.js -p list --separators --no-gfm > README.md",
-        "docs:deploy": "(echo \"---\nid: perspective\ntitle: \\`perspective\\` API\n---\n\n\"; cat README.md) > ../../docs/obj/perspective.md",
+        "docs:deploy": "(echo \"---\nid: perspective\ntitle: perspective API\n---\n\n\"; cat README.md) > ../../docs/obj/perspective.md",
         "test:build": "cpx \"test/html/*\" build",
         "test:run": "jest --color --ci",
         "test": "npm-run-all test:build test:run",
@@ -64,10 +64,7 @@
         "tslib": "^1.9.3",
         "ws": "^6.1.2"
     },
-    "optionalDependencies": {
-        "bufferutil": "~4.0.1"
-    },
     "devDependencies": {
-        "@finos/perspective-webpack-plugin": "^0.3.8"
+        "@finos/perspective-webpack-plugin": "^0.4.0-rc.6"
     }
 }

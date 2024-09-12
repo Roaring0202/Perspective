@@ -170,14 +170,10 @@ window.addEventListener("WebComponentsReady", function() {
     });
 });
 
-setTimeout(() => {
-    document.querySelector(".headerTitle").style.opacity = 0;
-});
-
 window.addEventListener("scroll", () => {
     if (window.scrollY > 100) {
-        document.querySelector(".headerTitle").style.opacity = 1;
+        document.querySelector(".logo").style.opacity = 1;
     } else {
-        document.querySelector(".headerTitle").style.opacity = 0;
+        document.querySelector(".logo").style.opacity = 0;
     }
 });

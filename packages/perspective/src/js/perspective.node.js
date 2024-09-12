@@ -184,7 +184,8 @@ class WebSocketServer extends Server {
                 msg.id = compound_id;
                 this.REQS[msg.id] = {ws, msg};
                 try {
-                    // Send all messages to the handler defined in Perspective.Server
+                    // Send all messages to the handler defined in
+                    // Perspective.Server
                     this.process(msg, ws.id);
                 } catch (e) {
                     console.error(e);
@@ -232,11 +233,13 @@ class WebSocketServer extends Server {
     /**
      * Send an asynchronous message to the Perspective web worker.
      *
-     * If the `transferable` param is set, pass two messages: the string representation of the message and then
-     * the ArrayBuffer data that needs to be transferred. The `is_transferable` flag tells the client to expect the next message
-     * to be a transferable object.
+     * If the `transferable` param is set, pass two messages: the string
+     * representation of the message and then the ArrayBuffer data that needs to
+     * be transferred. The `is_transferable` flag tells the client to expect the
+     * next message to be a transferable object.
      *
-     * @param {Object} msg a valid JSON-serializable message to pass to the client
+     * @param {Object} msg a valid JSON-serializable message to pass to the
+     * client
      * @param {*} transferable a transferable object to be sent to the client
      */
     post(msg, transferable) {
@@ -260,25 +263,58 @@ class WebSocketServer extends Server {
         }
     }
 
-    /**
-     * Expose a Perspective table through the WebSocket, allowing it to be accessed by a unique name.
-     *
-     * @param {String} name
-     * @param {Perspective.table} table
-     */
-    host_table(name, table) {
-        this._tables[name] = table;
-        table.view({columns: []});
+    _host(cache, name, input) {
+        if (cache[name] !== undefined) {
+            throw new Error(`"${name}" already exists`);
+        }
+        input.on_delete(() => {
+            delete cache[name];
+        });
+        cache[name] = input;
     }
 
     /**
-     * Expose a Perspective view through the WebSocket, allowing it to be accessed by a unique name.
+     * Expose a Perspective `table` through the WebSocket, allowing
+     * it to be accessed by a unique name from a client.  Hosted objects
+     * are automatically `eject`ed when their `delete()` method is called.
      *
      * @param {String} name
-     * @param {Perspective.view} view
+     * @param {perspective.table} table `table` to host.
+     */
+    host_table(name, table) {
+        this._host(this._tables, name, table);
+    }
+
+    /**
+     * Expose a Perspective `view` through the WebSocket, allowing
+     * it to be accessed by a unique name from a client.  Hosted objects
+     * are automatically `eject`ed when their `delete()` method is called.
+     *
+     * @param {String} name
+     * @param {perspective.view} view `view` to host.
      */
     host_view(name, view) {
-        this._views[name] = view;
+        this._host(this._views, name, view);
+    }
+
+    /**
+     * Cease hosting a `table` on this server.  Hosted objects
+     * are automatically `eject`ed when their `delete()` method is called.
+     *
+     * @param {String} name
+     */
+    eject_table(name) {
+        delete this._tables[name];
+    }
+
+    /**
+     * Cease hosting a `view` on this server.  Hosted objects
+     * are automatically `eject`ed when their `delete()` method is called.
+     *
+     * @param {String} name
+     */
+    eject_view(name) {
+        delete this._views[name];
     }
 
     close() {

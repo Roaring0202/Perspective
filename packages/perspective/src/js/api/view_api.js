@@ -11,7 +11,8 @@ import {subscribe, unsubscribe, async_queue} from "./dispatch.js";
 import {bindall} from "../utils.js";
 
 /**
- * Construct a proxy for the view object by creating a "view" message and sending it through the worker.
+ * Construct a proxy for the view object by creating a "view" message and
+ * sending it through the worker.
  *
  * @param {*} worker
  * @param {*} table_name
@@ -44,7 +45,8 @@ export function proxy_view(worker, name) {
 
 proxy_view.prototype = view.prototype;
 
-// Send view methods that do not create new objects (getters, setters etc.) to the queue for processing.
+// Send view methods that do not create new objects (getters, setters etc.) to
+// the queue for processing.
 
 view.prototype.get_config = async_queue("get_config");
 
@@ -57,6 +59,8 @@ view.prototype.to_columns = async_queue("to_columns");
 view.prototype.to_csv = async_queue("to_csv");
 
 view.prototype.schema = async_queue("schema");
+
+view.prototype.column_paths = async_queue("column_paths");
 
 view.prototype.num_columns = async_queue("num_columns");
 

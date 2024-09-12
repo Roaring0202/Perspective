@@ -9,17 +9,17 @@
 
 const COLUMN_SEPARATOR_STRING = "|";
 
-const TREE_COLUMN_INDEX = require("fin-hypergrid/src/behaviors/Behavior").prototype.treeColumnIndex;
+const TREE_COLUMN_INDEX = require("faux-hypergrid/src/behaviors/Behavior").prototype.treeColumnIndex;
 
 function page2hypergrid(data, row_pivots, columns) {
     const data_columns = Object.keys(data);
     const firstcol = data_columns.length > 0 ? data_columns[0] : undefined;
-    if (columns.length === 0) {
+    if (typeof firstcol === "undefined") {
         return [];
     }
 
     const is_tree = !!row_pivots.length;
-    const flat_columns = row_pivots.length ? columns.slice(1) : columns;
+    const flat_columns = row_pivots.length ? columns.filter(x => x !== "__ROW_PATH__") : columns;
     const data_indices = data_columns.map(x => flat_columns.indexOf(x));
     const rows = [];
 
@@ -48,6 +48,10 @@ function page2hypergrid(data, row_pivots, columns) {
             };
         }
 
+        if (data.__ID__) {
+            dataRow["__ID__"] = data["__ID__"][ridx].join("|");
+        }
+
         if (data.__INDEX__) {
             dataRow["__INDEX__"] = data["__INDEX__"][ridx][0];
         }
@@ -59,19 +63,7 @@ function page2hypergrid(data, row_pivots, columns) {
 }
 
 function psp2hypergrid(data, schema, tschema, row_pivots, columns) {
-    const firstcol = Object.keys(data).length > 0 ? Object.keys(data)[0] : undefined;
-    if (columns.length === 0 || data[firstcol].length === 0) {
-        const columns = Object.keys(schema);
-        return {
-            rows: [],
-            isTree: false,
-            configuration: {},
-            columnPaths: columns.map(col => [col]),
-            columnTypes: columns.map(col => schema[col])
-        };
-    }
-
-    const flat_columns = row_pivots.length ? columns.slice(1) : columns;
+    const flat_columns = row_pivots.length ? columns.filter(x => x !== "__ROW_PATH__") : columns;
     const columnPaths = flat_columns.map(row => row.split(COLUMN_SEPARATOR_STRING));
     const is_tree = !!row_pivots.length;
     const rows = page2hypergrid(data, row_pivots, columns);

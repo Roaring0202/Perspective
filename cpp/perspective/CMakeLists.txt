@@ -7,11 +7,36 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../../cmake/modules/" ${CMAKE_MODULE_PATH} )
 
+if(NOT DEFINED PSP_CMAKE_MODULE_PATH)
+	set(PSP_CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../../cmake/")
+endif()
+set(CMAKE_MODULE_PATH "${PSP_CMAKE_MODULE_PATH}/modules" ${CMAKE_MODULE_PATH})
+
+set(PSP_ARROW_VERSION 0.15.1)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	set(WIN32 ON)
+    set(MACOS OFF)
+    set(LINUX OFF)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(WIN32 OFF)
+    set(MACOS ON)
+    set(LINUX OFF)
+else()
+    set(WIN32 OFF)
+    set(MACOS OFF)
+    set(LINUX ON)
 endif()
+
+
+## Helper function
+function(string_starts_with str search)
+  string(FIND "${str}" "${search}" out)
+  if("${out}" EQUAL 0)
+    return(true)
+  endif()
+  return(false)
+endfunction()
 
 ##############################
 # helper to grab gtest et al #
@@ -36,8 +61,8 @@ function (psp_build_dep name cmake_file)
 	endif()
 
 	if(${name} STREQUAL arrow)
-		configure_file(${CMAKE_SOURCE_DIR}/../../cmake/arrow/CMakeLists.txt ${CMAKE_BINARY_DIR}/arrow-src/cpp/ COPYONLY)
-		configure_file(${CMAKE_SOURCE_DIR}/../../cmake/arrow/config.h ${CMAKE_BINARY_DIR}/arrow-src/cpp/src/arrow/util/ COPYONLY)
+		configure_file(${PSP_CMAKE_MODULE_PATH}/arrow/CMakeLists.txt ${CMAKE_BINARY_DIR}/arrow-src/cpp/ COPYONLY)
+		configure_file(${PSP_CMAKE_MODULE_PATH}/arrow/config.h ${CMAKE_BINARY_DIR}/arrow-src/cpp/src/arrow/util/ COPYONLY)
 		add_subdirectory(${CMAKE_BINARY_DIR}/arrow-src/cpp/
 			${CMAKE_BINARY_DIR}/arrow-build
 			EXCLUDE_FROM_ALL)
@@ -89,6 +114,12 @@ else()
 	endif()
 endif()
 
+if(DEFINED ENV{PSP_MANYLINUX})
+	set(MANYLINUX ON)
+else()
+	set(MANYLINUX OFF)
+endif()
+
 if (NOT DEFINED PSP_CPP_BUILD)
 	set(PSP_CPP_BUILD ON)
 endif()
@@ -97,6 +128,9 @@ if (NOT DEFINED PSP_PYTHON_BUILD)
 	set(PSP_PYTHON_BUILD OFF)
 elseif(PSP_PYTHON_BUILD)
 	set(PSP_CPP_BUILD ON)
+	if(NOT DEFINED PSP_PYTHON_VERSION)
+		set(PSP_PYTHON_VERSION 3.7)
+	endif()
 endif()
 
 if (NOT DEFINED PSP_CPP_BUILD_TESTS)
@@ -107,49 +141,59 @@ if (NOT DEFINED PSP_CPP_BUILD_STRICT)
 	set(PSP_CPP_BUILD_STRICT OFF)
 endif()
 
+set(BUILD_MESSAGE "")
 if(PSP_WASM_BUILD)
-	message(WARNING "${Cyan}Building WASM binding${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building WASM binding${ColorReset}")
 else()
-	message(WARNING "${Cyan}Skipping WASM binding${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Yellow}Skipping WASM binding${ColorReset}")
 endif()
 
+if(NOT DEFINED PSP_CPP_SRC)
+	set(PSP_CPP_SRC "${CMAKE_SOURCE_DIR}")
+endif()
 if(PSP_CPP_BUILD)
-	message(WARNING "${Cyan}Building C++ binding${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building C++ binding${ColorReset}")
 else()
-	message(WARNING "${Cyan}Skipping C++ binding${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Yellow}Skipping C++ binding${ColorReset}")
 endif()
 
 if (PSP_PYTHON_BUILD)
-	message(WARNING "${Cyan}Building Python binding${ColorReset}")
+	if(NOT DEFINED PSP_PYTHON_SRC)
+		set(PSP_PYTHON_SRC "${CMAKE_SOURCE_DIR}/../../python/perspective/perspective")
+	endif()
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building Python ${Red}${PSP_PYTHON_VERSION}${Cyan} binding${ColorReset}")
 else()
-	message(WARNING "${Cyan}Skipping Python binding${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Yellow}Skipping Python binding${ColorReset}")
 endif()
 
 if (PSP_CPP_BUILD_TESTS)
-	message(WARNING "${Cyan}Building C++ tests${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building C++ tests${ColorReset}")
 else()
-	message(WARNING "${Cyan}Skipping C++ tests${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Yellow}Skipping C++ tests${ColorReset}")
 endif()
 
 if (PSP_CPP_BUILD AND NOT PSP_CPP_BUILD_STRICT)
-	message(WARNING "${Cyan}Building C++ without strict warnings${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Yellow}Building C++ without strict warnings${ColorReset}")
 else()
-	message(WARNING "${Cyan}Building C++ with strict warnings${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building C++ with strict warnings${ColorReset}")
 endif()
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER )
 if(CMAKE_BUILD_TYPE_LOWER STREQUAL debug)
-	message(WARNING "${Red}Building DEBUG${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Red}Building DEBUG${ColorReset}")
 	add_definitions(-DPSP_DEBUG)
 else()
-	message(WARNING "${Cyan}Building RELEASE${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building RELEASE${ColorReset}")
 endif()
 
 if(PSP_BUILD_DOCS)
-	message(WARNING "${Cyan}Building Perspective Documentation${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Building Perspective Documentation${ColorReset}")
 else()
-	message(WARNING "${Cyan}Skipping Perspective Documentation${ColorReset}")
+	set(BUILD_MESSAGE "${BUILD_MESSAGE}\n${Cyan}Skipping Perspective Documentation${ColorReset}")
 endif()
+
+message(WARNING "${BUILD_MESSAGE}")
+
 #######################
 include_directories("${CMAKE_SOURCE_DIR}/src/include")
 
@@ -169,11 +213,15 @@ if (PSP_WASM_BUILD)
 	set(CMAKE_RANLIB emranlib)
 	set(CMAKE_EXECUTABLE_SUFFIX ".js")
 	list(APPEND CMAKE_PREFIX_PATH /usr/local)
-	include_directories("/usr/local/Homebrew/include")
+
 	include_directories("/usr/local/include" SYSTEM)
+
+    # Include this docker-only directory
 	include_directories("/boost_includes")
-	psp_build_dep("rapidjson" "../../cmake/rapidjson.txt.in")
-	
+
+    # bundle rapidjson for wasm build
+	psp_build_dep("rapidjson" "${PSP_CMAKE_MODULE_PATH}/rapidjson.txt.in")
+
 	set(EXTENDED_FLAGS " \
 		--bind \
 		--source-map-base ./build/ \
@@ -218,7 +266,7 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 	#####################
 	if(CMAKE_BUILD_TYPE_LOWER STREQUAL debug)
 		set(OPT_FLAGS " \
-			-O1 \
+			-O0 \
 			-g3 \
 			")
 	else()
@@ -245,7 +293,7 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 	find_package(TBB)
 	if(NOT TBB_FOUND)
 		message("${Red}TBB could not be located${ColorReset}")
-		psp_build_dep("tbb" "../../cmake/TBB.txt.in")
+		psp_build_dep("tbb" "${PSP_CMAKE_MODULE_PATH}/TBB.txt.in")
 	else()
 		message("${Cyan}Found tbb in ${TBB_INCLUDE_DIRS} ${TBB_LIBRARY_DIRS} ${ColorReset}")
 		include_directories( ${TBB_INCLUDE_DIRS} )
@@ -263,29 +311,56 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		#########################
 		# PYTHON BINDINGS BUILD #
 		#########################
-		include_directories("/usr/local/include/python3.7m")  # FIXME
-		include_directories("${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/include")
-		find_package( PythonInterp 3.7 REQUIRED )
-		find_package( PythonLibs 3.7 REQUIRED )
-		include_directories( ${PYTHON_INCLUDE_DIRS} )
+		include_directories("${PSP_PYTHON_SRC}/perspective/include")
+		if(MANYLINUX)
+			# Manylinux docker images have no shared libraries
+			# The instead use a statically built python.
+			# Cmake's default FindPython can't find the python headers
+			# without also finding (or failing to find) the python libraries
+			# so we use a custom FindPythonHeaders that is the same as the
+			# default, but ignores when the python libraries can't be found.
+			message("${Red}Manylinux build has no python shared libraries${ColorReset}")
+			find_package( Python ${PSP_PYTHON_VERSION} REQUIRED COMPONENTS Interpreter )
+			find_package( PythonHeaders ${PSP_PYTHON_VERSION} REQUIRED)
+		else()
+			message("${Cyan}Use python shared libraries${ColorReset}")
+			find_package( Python ${PSP_PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
+		endif()
+		message("${Cyan}Using python ${PYTHON_INCLUDE_DIRS} ${Python_LIBRARIES} ${ColorReset}")
+		include_directories( ${Python_INCLUDE_DIRS} )
 
-
+        # already found from before
 		find_package(Boost)
-		if(NOT Boost_FOUND)
-			message("${Red}Boost could not be located${ColorReset}")
-		else()
-			message("${Cyan}Found boost in ${Boost_INCLUDE_DIRS} ${Boost_LIBRARY_DIRS} ${ColorReset}")
-		endif()
-		include_directories( ${Boost_INCLUDE_DIRS} )
 
-		find_package(pybind11)
-		if(NOT pybind11_FOUND)
-		    message("${Red}PyBind11 could not be located${ColorReset}")
-			psp_build_dep("pybind11" "../../cmake/Pybind.txt.in")
+		if(MACOS)
+			# on mac, use the vanilla pybind11 finder
+			find_package(pybind11)
+			if(pybind11_FOUND)
+				# Homebrew install pybind11
+				set(PYTHON_PYBIND_FOUND pybind11_FOUND)
+			else()
+				# see if python installed pybind11 is available
+				find_package(Pybind)
+				if(PYTHON_PYBIND_FOUND)
+					# Need to add extra flags due to pybind weirness
+					# https://github.com/pybind/pybind11/blob/7830e8509f2adc97ce9ee32bf99cd4b82089cc4c/tools/pybind11Tools.cmake#L103
+				    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup")
+				endif()
+			endif()
+
 		else()
-		    message("${Cyan}Found PyBind11 in ${pybind11_INCLUDE_DIRS}${ColorReset}")
+			# on linux or in docker, use our custom pybind finder to look 
+			# for just the python installed pybind
+			find_package(Pybind)
 		endif()
-		include_directories( ${pybind11_INCLUDE_DIRS} )
+
+		if(NOT PYTHON_PYBIND_FOUND)
+		    message("${Red}PyBind11 could not be located${ColorReset}")
+			psp_build_dep("pybind11" "${PSP_CMAKE_MODULE_PATH}/Pybind.txt.in")
+		else()
+		    message("${Cyan}Found PyBind11 in ${PYTHON_PYBIND_INCLUDE_DIR}${ColorReset}")
+			include_directories( ${PYTHON_PYBIND_INCLUDE_DIR} )
+		endif()
 
 		find_package(NumPy)
 		if(NOT PYTHON_NUMPY_FOUND)
@@ -296,33 +371,33 @@ elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
 		endif()
 		include_directories( ${PYTHON_NUMPY_INCLUDE_DIR})
 
-		find_package(PyArrow 0.15 REQUIRED)
+		find_package(PyArrow 0.15.1 REQUIRED)
 
 		if(NOT PYTHON_PYARROW_FOUND)
 			message(FATAL_ERROR "${Red}PyArrow could not be located${ColorReset}")
 		else()
 			message(WARNING "${Cyan}PyArrow found: ${PYTHON_PYARROW_INCLUDE_DIR}${ColorReset}")
-			if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-				message(WARNING "${Cyan}Using pre-built libarrow from: ${PYTHON_PYARROW_INCLUDE_DIR}${ColorReset}")
+            if (NOT WIN32)
+                message(WARNING "${Cyan}Using pre-built ${PYTHON_PYARROW_PYTHON_SHARED_LIBRARY} ${PYTHON_PYARROW_ARROW_SHARED_LIBRARY} from: ${PYTHON_PYARROW_LIBRARY_DIR}${ColorReset}")
 			endif()
 		endif()
 		include_directories(${PYTHON_PYARROW_INCLUDE_DIR})
-		link_directories(${PYTHON_PYARROW_LIBRARY_DIR})
-
+        link_directories(${PYTHON_PYARROW_LIBRARY_DIR})
 		#####################
 	endif()
 endif()
 
-psp_build_dep("hopscotch" "../../cmake/hopscotch.txt.in")
-psp_build_dep("ordered-map" "../../cmake/ordered-map.txt.in")
+psp_build_dep("date" "${PSP_CMAKE_MODULE_PATH}/date.txt.in")
+psp_build_dep("hopscotch" "${PSP_CMAKE_MODULE_PATH}/hopscotch.txt.in")
+psp_build_dep("ordered-map" "${PSP_CMAKE_MODULE_PATH}/ordered-map.txt.in")
 
-# For all non-MacOS builds, or if building WASM/CPP, build minimal arrow from source
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR NOT PSP_PYTHON_BUILD)
+# For all non-MacOS and non-linux builds, or if building WASM/CPP, build minimal arrow from source
+if (WIN32 OR NOT PSP_PYTHON_BUILD)
 	# build arrow + dependencies from source for Emscripten and C++
 	message("${Cyan}Building minimal Apache Arrow${ColorReset}")
 
-	psp_build_dep("double-conversion" "../../cmake/double-conversion.txt.in")
-	psp_build_dep("arrow" "../../cmake/arrow.txt.in")
+	psp_build_dep("double-conversion" "${PSP_CMAKE_MODULE_PATH}/double-conversion.txt.in")
+	psp_build_dep("arrow" "${PSP_CMAKE_MODULE_PATH}/arrow.txt.in")
 
 	find_package(Flatbuffers)
 	if(NOT FLATBUFFERS_FOUND)
@@ -341,97 +416,102 @@ set(CMAKE_C_FLAGS " \
 	${OPT_FLAGS} \
 	")
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++1y")
+endif()
+
 set (SOURCE_FILES
-	src/cpp/aggregate.cpp
-	src/cpp/aggspec.cpp
-	src/cpp/arg_sort.cpp
-	src/cpp/arrow.cpp
-	src/cpp/base.cpp
-	src/cpp/base_impl_linux.cpp
-	src/cpp/base_impl_osx.cpp
-	src/cpp/base_impl_wasm.cpp
-	src/cpp/base_impl_win.cpp
-	src/cpp/binding.cpp
-	src/cpp/build_filter.cpp
-	#src/cpp/calc_agg_dtype.cpp
-	src/cpp/column.cpp
-	src/cpp/comparators.cpp
-	src/cpp/compat.cpp
-	src/cpp/compat_impl_linux.cpp
-	src/cpp/compat_impl_osx.cpp
-	src/cpp/compat_impl_win.cpp
-	src/cpp/config.cpp
-	src/cpp/context_base.cpp
-	src/cpp/context_grouped_pkey.cpp
-	src/cpp/context_handle.cpp
-	src/cpp/context_one.cpp
-	src/cpp/context_two.cpp
-	src/cpp/context_zero.cpp
-	src/cpp/custom_column.cpp
-	src/cpp/data.cpp
-	src/cpp/data_slice.cpp
-	src/cpp/data_table.cpp
-	src/cpp/date.cpp
-	src/cpp/dense_nodes.cpp
-	src/cpp/dense_tree_context.cpp
-	src/cpp/dense_tree.cpp
-	src/cpp/dependency.cpp
-	src/cpp/extract_aggregate.cpp
-	src/cpp/filter.cpp
-	src/cpp/flat_traversal.cpp
-	src/cpp/get_data_extents.cpp
-	src/cpp/gnode.cpp
-	src/cpp/gnode_state.cpp
-	src/cpp/histogram.cpp
-	src/cpp/logtime.cpp
-	src/cpp/mask.cpp
-	src/cpp/min_max.cpp
-	src/cpp/multi_sort.cpp
-	src/cpp/none.cpp
-	src/cpp/path.cpp
-	src/cpp/pivot.cpp
-	src/cpp/pool.cpp
-	src/cpp/port.cpp
-	src/cpp/raii.cpp
-	src/cpp/raii_impl_linux.cpp
-	src/cpp/raii_impl_osx.cpp
-	src/cpp/raii_impl_win.cpp
-	src/cpp/range.cpp
-	src/cpp/rlookup.cpp
-	src/cpp/scalar.cpp
-	src/cpp/schema_column.cpp
-	src/cpp/schema.cpp
-	src/cpp/slice.cpp
-	src/cpp/sort_specification.cpp
-	src/cpp/sparse_tree.cpp
-	src/cpp/sparse_tree_node.cpp
-	src/cpp/step_delta.cpp
-	src/cpp/storage.cpp
-	src/cpp/storage_impl_linux.cpp
-	src/cpp/storage_impl_osx.cpp
-	src/cpp/storage_impl_win.cpp
-	src/cpp/sym_table.cpp
-	src/cpp/table.cpp
-	src/cpp/time.cpp
-	src/cpp/traversal.cpp
-	src/cpp/traversal_nodes.cpp
-	src/cpp/tree_context_common.cpp
-	src/cpp/utils.cpp
-	src/cpp/update_task.cpp
-	src/cpp/view.cpp
-	src/cpp/view_config.cpp
-	src/cpp/vocab.cpp
+	${PSP_CPP_SRC}/src/cpp/aggregate.cpp
+	${PSP_CPP_SRC}/src/cpp/aggspec.cpp
+	${PSP_CPP_SRC}/src/cpp/arg_sort.cpp
+	${PSP_CPP_SRC}/src/cpp/arrow.cpp
+	${PSP_CPP_SRC}/src/cpp/base.cpp
+	${PSP_CPP_SRC}/src/cpp/base_impl_linux.cpp
+	${PSP_CPP_SRC}/src/cpp/base_impl_osx.cpp
+	${PSP_CPP_SRC}/src/cpp/base_impl_wasm.cpp
+	${PSP_CPP_SRC}/src/cpp/base_impl_win.cpp
+	${PSP_CPP_SRC}/src/cpp/binding.cpp
+	${PSP_CPP_SRC}/src/cpp/build_filter.cpp
+	#${PSP_CPP_SRC}/src/cpp/calc_agg_dtype.cpp
+	${PSP_CPP_SRC}/src/cpp/column.cpp
+	${PSP_CPP_SRC}/src/cpp/comparators.cpp
+	${PSP_CPP_SRC}/src/cpp/compat.cpp
+	${PSP_CPP_SRC}/src/cpp/compat_impl_linux.cpp
+	${PSP_CPP_SRC}/src/cpp/compat_impl_osx.cpp
+	${PSP_CPP_SRC}/src/cpp/compat_impl_win.cpp
+	${PSP_CPP_SRC}/src/cpp/config.cpp
+	${PSP_CPP_SRC}/src/cpp/context_base.cpp
+	${PSP_CPP_SRC}/src/cpp/context_grouped_pkey.cpp
+	${PSP_CPP_SRC}/src/cpp/context_handle.cpp
+	${PSP_CPP_SRC}/src/cpp/context_one.cpp
+	${PSP_CPP_SRC}/src/cpp/context_two.cpp
+	${PSP_CPP_SRC}/src/cpp/context_zero.cpp
+	${PSP_CPP_SRC}/src/cpp/custom_column.cpp
+	${PSP_CPP_SRC}/src/cpp/data.cpp
+	${PSP_CPP_SRC}/src/cpp/data_slice.cpp
+	${PSP_CPP_SRC}/src/cpp/data_table.cpp
+	${PSP_CPP_SRC}/src/cpp/date.cpp
+	${PSP_CPP_SRC}/src/cpp/dense_nodes.cpp
+	${PSP_CPP_SRC}/src/cpp/dense_tree_context.cpp
+	${PSP_CPP_SRC}/src/cpp/dense_tree.cpp
+	${PSP_CPP_SRC}/src/cpp/dependency.cpp
+	${PSP_CPP_SRC}/src/cpp/extract_aggregate.cpp
+	${PSP_CPP_SRC}/src/cpp/filter.cpp
+	${PSP_CPP_SRC}/src/cpp/flat_traversal.cpp
+	${PSP_CPP_SRC}/src/cpp/get_data_extents.cpp
+	${PSP_CPP_SRC}/src/cpp/gnode.cpp
+	${PSP_CPP_SRC}/src/cpp/gnode_state.cpp
+	${PSP_CPP_SRC}/src/cpp/histogram.cpp
+	${PSP_CPP_SRC}/src/cpp/logtime.cpp
+	${PSP_CPP_SRC}/src/cpp/mask.cpp
+	${PSP_CPP_SRC}/src/cpp/min_max.cpp
+	${PSP_CPP_SRC}/src/cpp/multi_sort.cpp
+	${PSP_CPP_SRC}/src/cpp/none.cpp
+	${PSP_CPP_SRC}/src/cpp/path.cpp
+	${PSP_CPP_SRC}/src/cpp/pivot.cpp
+	${PSP_CPP_SRC}/src/cpp/pool.cpp
+	${PSP_CPP_SRC}/src/cpp/port.cpp
+	${PSP_CPP_SRC}/src/cpp/raii.cpp
+	${PSP_CPP_SRC}/src/cpp/raii_impl_linux.cpp
+	${PSP_CPP_SRC}/src/cpp/raii_impl_osx.cpp
+	${PSP_CPP_SRC}/src/cpp/raii_impl_win.cpp
+	${PSP_CPP_SRC}/src/cpp/range.cpp
+	${PSP_CPP_SRC}/src/cpp/rlookup.cpp
+	${PSP_CPP_SRC}/src/cpp/scalar.cpp
+	${PSP_CPP_SRC}/src/cpp/schema_column.cpp
+	${PSP_CPP_SRC}/src/cpp/schema.cpp
+	${PSP_CPP_SRC}/src/cpp/slice.cpp
+	${PSP_CPP_SRC}/src/cpp/sort_specification.cpp
+	${PSP_CPP_SRC}/src/cpp/sparse_tree.cpp
+	${PSP_CPP_SRC}/src/cpp/sparse_tree_node.cpp
+	${PSP_CPP_SRC}/src/cpp/step_delta.cpp
+	${PSP_CPP_SRC}/src/cpp/storage.cpp
+	${PSP_CPP_SRC}/src/cpp/storage_impl_linux.cpp
+	${PSP_CPP_SRC}/src/cpp/storage_impl_osx.cpp
+	${PSP_CPP_SRC}/src/cpp/storage_impl_win.cpp
+	${PSP_CPP_SRC}/src/cpp/sym_table.cpp
+	${PSP_CPP_SRC}/src/cpp/table.cpp
+	${PSP_CPP_SRC}/src/cpp/time.cpp
+	${PSP_CPP_SRC}/src/cpp/traversal.cpp
+	${PSP_CPP_SRC}/src/cpp/traversal_nodes.cpp
+	${PSP_CPP_SRC}/src/cpp/tree_context_common.cpp
+	${PSP_CPP_SRC}/src/cpp/utils.cpp
+	${PSP_CPP_SRC}/src/cpp/update_task.cpp
+	${PSP_CPP_SRC}/src/cpp/view.cpp
+	${PSP_CPP_SRC}/src/cpp/view_config.cpp
+	${PSP_CPP_SRC}/src/cpp/vocab.cpp
 	)
 
 set (PYTHON_SOURCE_FILES
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/accessor.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/context.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/fill.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/python.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/serialization.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/table.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/utils.cpp
-	${CMAKE_SOURCE_DIR}/../../python/perspective/perspective/src/view.cpp
+	${PSP_PYTHON_SRC}/src/accessor.cpp
+	${PSP_PYTHON_SRC}/src/context.cpp
+	${PSP_PYTHON_SRC}/src/fill.cpp
+	${PSP_PYTHON_SRC}/src/numpy.cpp
+	${PSP_PYTHON_SRC}/src/python.cpp
+	${PSP_PYTHON_SRC}/src/serialization.cpp
+	${PSP_PYTHON_SRC}/src/table.cpp
+	${PSP_PYTHON_SRC}/src/utils.cpp
+	${PSP_PYTHON_SRC}/src/view.cpp
 	)
 
 if (WIN32)
@@ -441,7 +521,6 @@ else()
 endif()
 
 if (PSP_WASM_BUILD)
-
 	add_library(psp ${SOURCE_FILES})
 	target_compile_definitions(psp PRIVATE PSP_ENABLE_WASM=1)
 	set_target_properties(psp PROPERTIES COMPILE_FLAGS "${ASYNC_MODE_FLAGS}")
@@ -454,46 +533,56 @@ if (PSP_WASM_BUILD)
 	set_target_properties(perspective.async PROPERTIES RUNTIME_OUTPUT_DIRECTORY "./build/")
 	set_target_properties(perspective.async PROPERTIES OUTPUT_NAME "psp.async")
 elseif(PSP_CPP_BUILD OR PSP_PYTHON_BUILD)
-	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-		set(CMAKE_SHARED_LIBRARY_SUFFIX .dylib)
-	endif()
+    if(NOT WIN32)
+		set(CMAKE_SHARED_LIBRARY_SUFFIX .so)
+		# Look for the binary using @loader_path (relative to binary location) instead of @rpath
+		# and include arrow in @rpath so it can be found by libbinding/libpsp
+        set(CMAKE_MACOSX_RPATH TRUE)
+        set(CMAKE_SKIP_BUILD_RPATH FALSE)
+		set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+        set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+        set(CMAKE_INSTALL_NAME_DIR "@rpath/")
+
+        if(MACOS)
+            set(module_install_rpath "@loader_path/")
+	    else()
+            set(module_install_rpath "\$ORIGIN")
+	    endif()
+    endif()
 
 	if(PSP_PYTHON_BUILD)
 		########################
 		# Python extra targets #
 		########################
 		add_library(psp SHARED ${SOURCE_FILES} ${HEADER_FILES})
-
-		target_compile_definitions(psp PRIVATE PSP_ENABLE_PYTHON=1)
-
-		# On MacOS, link against libarrow 0.15.0 in pyarrow directory
-		# This does not work for Linux or Windows - prebuilt binaries for Linux must be backward compatible with GCC 4.8,
-		# which means they use the old ABI: https://github.com/blue-yonder/turbodbc/issues/102#issuecomment-312222949
-		if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-			target_link_libraries(psp ${PYTHON_PYARROW_SHARED_LIBRARY})
-		else()
-			target_link_libraries(psp arrow)
-			target_link_libraries(psp ${Boost_FILESYSTEM_LIBRARY})
-		endif()
-
-		target_link_libraries(psp ${PYTHON_LIBRARIES})
-		set(CMAKE_SHARED_LIBRARY_SUFFIX .so)
-
 		add_library(binding SHARED ${PYTHON_SOURCE_FILES})
 
+		include_directories(${PSP_PYTHON_SRC}/include)
+
+		target_compile_definitions(psp PRIVATE PSP_ENABLE_PYTHON=1)
 		target_compile_definitions(binding PRIVATE PSP_ENABLE_PYTHON=1)
 		target_compile_options(binding PRIVATE -Wdeprecated-declarations)
+
+        # Link against libarrow 0.15.1 in pyarrow directory for windows
+        if (WIN32)
+			target_link_libraries(psp arrow)
+			target_link_libraries(binding arrow)
+			target_link_libraries(psp ${Boost_FILESYSTEM_LIBRARY})
+			target_link_libraries(binding ${Boost_FILESYSTEM_LIBRARY})
+		else()
+            target_link_libraries(psp ${PYTHON_PYARROW_LIBRARIES})
+            target_link_libraries(binding ${PYTHON_PYARROW_LIBRARIES})
+            set_property(TARGET psp PROPERTY INSTALL_RPATH ${CMAKE_INSTALL_RPATH} ${module_install_rpath}  ${PYTHON_PYARROW_LIBRARY_DIR})
+            set_property(TARGET binding PROPERTY INSTALL_RPATH ${CMAKE_INSTALL_RPATH} ${module_install_rpath}  ${PYTHON_PYARROW_LIBRARY_DIR})
+        endif()
+
+		target_link_libraries(psp ${PYTHON_LIBRARIES})
+		target_link_libraries(binding ${PYTHON_LIBRARIES})
 		target_link_libraries(binding psp)
 		target_link_libraries(binding tbb)
 
-		# Link again libarrow from pyarrow
-		if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-			target_link_libraries(binding ${PYTHON_PYARROW_SHARED_LIBRARY})
-		else()
-			target_link_libraries(psp ${PYTHON_PYARROW_LIBRARIES})
-		endif()
-		target_link_libraries(binding ${PYTHON_PYARROW_SHARED_LIBRARY})
-		target_link_libraries(binding ${PYTHON_LIBRARIES})
+		add_custom_command(TARGET psp POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:psp> ${PSP_PYTHON_SRC}/table/)
+		add_custom_command(TARGET binding POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:binding> ${PSP_PYTHON_SRC}/table/)
 		########################
 	else()
 		add_library(psp SHARED ${SOURCE_FILES} ${HEADER_FILES})
@@ -524,7 +613,11 @@ if (PSP_CPP_BUILD_TESTS)
 	if (WIN32)
 	  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 	endif()
-	psp_build_dep("googletest" "../../cmake/GTest.txt.in")
+
+	if (NOT PSP_WASM_BUILD)
+		# don't need to build gtest as theres one in rapidjson
+		psp_build_dep("googletest" "${PSP_CMAKE_MODULE_PATH}/GTest.txt.in")
+	endif()
 
 	add_subdirectory(test)
 	add_custom_target(gcov

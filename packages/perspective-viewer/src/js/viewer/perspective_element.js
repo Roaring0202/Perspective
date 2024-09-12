@@ -79,16 +79,6 @@ function get_aggregates_with_defaults(aggregate_attribute, schema, cols) {
     return aggregates;
 }
 
-function calculate_throttle_timeout(render_time) {
-    if (!render_time || render_time.length < 5) {
-        return 0;
-    }
-    const view_count = document.getElementsByTagName("perspective-viewer").length;
-    const avg = render_time.reduce((x, y) => x + y, 0) / render_time.length;
-    const timeout = avg * view_count * 2;
-    return Math.min(10000, Math.max(0, timeout));
-}
-
 const _total_template = args => {
     if (args) {
         const x = numberWithCommas(args[0]);
@@ -270,6 +260,35 @@ export class PerspectiveElement extends StateElement {
         return false;
     }
 
+    /**
+     * Calculates the optimal timeout in milliseconds for render events,
+     * calculated by 5 frame moving average of this component's render
+     * framerate, or explicit override attribute `"throttle"`.
+     *
+     * @private
+     * @returns
+     * @memberof PerspectiveElement
+     */
+    _calculate_throttle_timeout() {
+        let timeout;
+        const throttle = this.getAttribute("throttle");
+        if (throttle === undefined || throttle === "null" || !this.hasAttribute("throttle")) {
+            if (!this.__render_times || this.__render_times.length < 5) {
+                return 0;
+            }
+            timeout = this.__render_times.reduce((x, y) => x + y, 0) / this.__render_times.length;
+            timeout = Math.min(5000, timeout);
+        } else {
+            timeout = parseInt(throttle);
+            if (isNaN(timeout) || timeout < 0) {
+                console.warn(`Bad throttle attribute value "${throttle}".  Can be (non-negative integer) milliseconds.`);
+                this.removeAttribute("throttle");
+                return 0;
+            }
+        }
+        return Math.max(0, timeout);
+    }
+
     _view_on_update(limit_points) {
         if (!this._debounced) {
             this._debounced = setTimeout(async () => {
@@ -297,7 +316,7 @@ export class PerspectiveElement extends StateElement {
                 } finally {
                     this.dispatchEvent(new Event("perspective-view-update"));
                 }
-            }, calculate_throttle_timeout(this.__render_times));
+            }, this._calculate_throttle_timeout());
         }
     }
 
@@ -426,8 +445,10 @@ export class PerspectiveElement extends StateElement {
 
     _render_time() {
         const t = performance.now();
-        let i = 0;
-        return () => (this.__render_times[i++ % 5] = performance.now() - t);
+        return () => {
+            this.__render_times.unshift(performance.now() - t);
+            this.__render_times = this.__render_times.slice(0, 5);
+        };
     }
 
     _restyle_plugin() {
@@ -480,8 +501,6 @@ export class PerspectiveElement extends StateElement {
                 resolve();
             }
         };
-
-        this._resize_handler = _.throttle(this.notifyResize, 100).bind(this);
     }
 
     _get_worker() {

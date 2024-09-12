@@ -7,25 +7,32 @@
  *
  */
 
-import Hypergrid from "fin-hypergrid";
-import Base from "fin-hypergrid/src/Base";
+import Hypergrid from "faux-hypergrid";
+import Base from "faux-hypergrid/src/Base";
+import Canvas from "faux-hypergrid/src/lib/Canvas";
 import groupedHeaderPlugin from "fin-hypergrid-grouped-header-plugin";
 
 import * as perspectivePlugin from "./perspective-plugin";
 import PerspectiveDataModel from "./PerspectiveDataModel";
-import {psp2hypergrid, page2hypergrid} from "./psp-to-hypergrid";
+import {psp2hypergrid} from "./psp-to-hypergrid";
 
 import {bindTemplate} from "@finos/perspective-viewer/dist/esm/utils.js";
 
 import TEMPLATE from "../html/hypergrid.html";
 
 import style from "../less/hypergrid.less";
-import {get_styles, clear_styles, default_grid_properties} from "./styles.js";
+import {get_styles, clear_styles, get_dynamic_styles, default_grid_properties} from "./styles.js";
 import {set_formatters} from "./formatters.js";
 import {set_editors} from "./editors.js";
 import {treeLineRendererPaint} from "./hypergrid-tree-cell-renderer";
 
-bindTemplate(TEMPLATE, style)(
+Canvas.prototype.stopResizeLoop();
+Canvas.prototype.stopPaintLoop();
+
+bindTemplate(
+    TEMPLATE,
+    style
+)(
     class HypergridElement extends HTMLElement {
         set_data(data, schema, tschema, row_pivots, columns, force = false) {
             const hg_data = psp2hypergrid(data, schema, tschema, row_pivots, columns);
@@ -41,13 +48,23 @@ bindTemplate(TEMPLATE, style)(
                 const host = this.shadowRoot.querySelector("#mainGrid");
 
                 host.setAttribute("hidden", true);
+                Canvas.prototype.restartPaintLoop();
                 this.grid = new Hypergrid(host, {DataModel: PerspectiveDataModel});
-                this.grid.canvas.stopResizeLoop();
+                Canvas.prototype.stopPaintLoop();
                 host.removeAttribute("hidden");
                 this.grid.get_styles = () => get_styles(this);
+                this.grid.get_dynamic_styles = (...args) => get_dynamic_styles(this, ...args);
 
                 const grid_properties = default_grid_properties();
+                const styles = get_styles(this);
                 grid_properties.renderer = ["SimpleCell", "Borders"];
+
+                // Handle grouped header plugin bugs
+                Object.assign(grid_properties.groupedHeader, styles[""].groupedHeader);
+                if (typeof grid_properties.groupedHeader.flatHeight === "number") {
+                    grid_properties.groupedHeader.flatHeight = grid_properties.groupedHeader.flatHeight.toString();
+                }
+
                 this.grid.installPlugins([perspectivePlugin, [groupedHeaderPlugin, grid_properties.groupedHeader]]);
 
                 // Broken in fin-hypergrid-grouped-header 0.1.2
@@ -58,7 +75,6 @@ bindTemplate(TEMPLATE, style)(
                 };
 
                 this.grid.addProperties(grid_properties);
-                const styles = get_styles(this);
                 this.grid.addProperties(styles[""]);
 
                 set_formatters(this.grid);
@@ -88,9 +104,10 @@ async function grid_update(div, view, task) {
         return;
     }
     const dataModel = hypergrid.behavior.dataModel;
-    dataModel.setDirty(nrows);
     dataModel._view = view;
     dataModel._table = this._table;
+    dataModel.setDirty(nrows);
+    hypergrid.behaviorChanged();
     hypergrid.canvas.paintNow();
 }
 
@@ -123,7 +140,7 @@ async function getOrCreateHypergrid(div) {
         perspectiveHypergridElement.setAttribute("tabindex", 1);
         perspectiveHypergridElement.addEventListener("blur", () => {
             if (perspectiveHypergridElement.grid && !perspectiveHypergridElement.grid._is_editing) {
-                perspectiveHypergridElement.grid.selectionModel.clear();
+                perspectiveHypergridElement.grid.selectionModel.clear(true); //keepRowSelections = true
                 perspectiveHypergridElement.grid.paintNow();
             }
         });
@@ -140,12 +157,19 @@ async function getOrCreateHypergrid(div) {
     return perspectiveHypergridElement;
 }
 
+function suppress_paint(hypergrid, f) {
+    const canvas = hypergrid.divCanvas;
+    hypergrid.divCanvas = undefined;
+    f();
+    hypergrid.divCanvas = canvas;
+}
+
 async function grid_create(div, view, task, max_rows, max_cols, force) {
     let hypergrid = get_hypergrid.call(this);
     if (hypergrid) {
         hypergrid.behavior.dataModel._view = undefined;
         hypergrid.behavior.dataModel._table = undefined;
-        hypergrid.allowEvents(false);
+        suppress_paint(hypergrid, () => hypergrid.allowEvents(false));
     }
 
     const config = await view.get_config();
@@ -153,16 +177,15 @@ async function grid_create(div, view, task, max_rows, max_cols, force) {
     if (task.cancelled) {
         return;
     }
-
     const colPivots = config.column_pivots;
     const rowPivots = config.row_pivots;
-    const window = {
+    const data_window = {
         start_row: 0,
-        end_row: Math.max(colPivots.length + 1, rowPivots.length + 1),
-        index: rowPivots.length === 0 && colPivots.length === 0
+        end_row: 1,
+        id: rowPivots.length === 0 && colPivots.length === 0
     };
 
-    const [nrows, json, schema, tschema] = await Promise.all([view.num_rows(), view.to_columns(window), view.schema(), this._table.schema()]);
+    const [nrows, json, schema, tschema, all_columns] = await Promise.all([view.num_rows(), view.to_columns(data_window), view.schema(), this._table.schema(), view.column_paths()]);
 
     if (task.cancelled) {
         return;
@@ -175,38 +198,27 @@ async function grid_create(div, view, task, max_rows, max_cols, force) {
         return;
     }
 
-    let columns = Object.keys(json).filter(x => x !== "__INDEX__");
+    const columns = all_columns.filter(x => x !== "__INDEX__");
     const dataModel = hypergrid.behavior.dataModel;
     dataModel._grid = hypergrid;
 
     dataModel.setIsTree(rowPivots.length > 0);
     dataModel.setDirty(nrows);
+    dataModel.clearSelectionState();
     dataModel._view = view;
     dataModel._table = this._table;
     dataModel._config = config;
     dataModel._viewer = this;
+    dataModel._columns = columns;
+    dataModel._pad_window = this.hasAttribute("settings");
 
-    dataModel.pspFetch = async range => {
-        range.end_row += this.hasAttribute("settings") ? 8 : 2;
-        range.end_col += rowPivots && rowPivots.length > 0 ? 1 : 0;
-        range.index = rowPivots.length === 0 && colPivots.length === 0;
-        let next_page = await dataModel._view.to_columns(range);
-        if (columns.length === 0) {
-            columns = Object.keys(await view.to_columns(window));
-        }
-        dataModel.data = [];
-        const rows = page2hypergrid(next_page, rowPivots, columns);
-        const base = range.start_row;
-        const data = dataModel.data;
-        rows.forEach((row, offset) => (data[base + offset] = row));
-    };
+    hypergrid.renderer.needsComputeCellsBounds = true;
+    suppress_paint(hypergrid, () => perspectiveHypergridElement.set_data(json, schema, tschema, rowPivots, columns, force));
+    if (hypergrid.behavior.dataModel._outstanding) {
+        await hypergrid.behavior.dataModel._outstanding.req;
+    }
 
-    perspectiveHypergridElement.set_data(json, schema, tschema, rowPivots, columns, force);
-    hypergrid.allowEvents(false);
-    hypergrid.renderer.computeCellsBounds(true);
     await hypergrid.canvas.resize(true);
-    hypergrid.renderer.computeCellsBounds(true);
-    hypergrid.canvas.paintNow();
     hypergrid.allowEvents(true);
 }
 
@@ -224,6 +236,7 @@ global.registerPlugin("hypergrid", {
             hypergrid.canvas.paintNow();
             let nrows = await this._view.num_rows();
             hypergrid.behavior.dataModel.setDirty(nrows);
+            await hypergrid.canvas.resize(true);
             hypergrid.canvas.paintNow();
         }
     },

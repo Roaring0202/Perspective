@@ -1,13 +1,17 @@
 include LICENSE
 include README.md
-include CONTRIBUTING.md
 
-include requirements.txt
-include requirements-dev.txt
 include setup.cfg
 include pyproject.toml
 include .bumpversion.cfg
 include Makefile
+
+# Source files for perspective-python
+graft perspective
+include perspective/table/*.so
+include perspective/table/*.dll
+include perspective/table/*.dylib
+
 
 graft perspective/tests
 
@@ -22,12 +26,18 @@ prune docs/dist
 
 # Webapp files
 include package.json
-include tsconfig.json
-include tslint.json
-graft src
+include webpack.config.js
+graft dist/src
 graft style
-graft ../../cpp
-graft ../../cmake
+graft js
+
+# C++ build
+graft dist/cmake
+graft dist/src
+graft perspective/src
+graft perspective/include
+graft dist/test
+include dist/CMakeLists.txt
 
 # Patterns to exclude from any directory
 global-exclude *~
@@ -35,3 +45,4 @@ global-exclude *.pyc
 global-exclude *.pyo
 global-exclude .git
 global-exclude .ipynb_checkpoints
+global-exclude .DS_Store

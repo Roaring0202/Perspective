@@ -360,9 +360,20 @@ t_data_table::append(const t_data_table& other) {
     std::set<std::string> incoming;
 
     for (const auto& cname : other.m_schema.m_columns) {
-        PSP_VERBOSE_ASSERT(
-            other.get_const_column(cname)->get_dtype() == get_column(cname)->get_dtype(),
-            "Mismatched column dtypes");
+        t_dtype col_dtype = get_column(cname)->get_dtype();
+        t_dtype other_col_dtype = other.get_const_column(cname)->get_dtype();
+        if (col_dtype != other_col_dtype) {
+            std::stringstream ss;
+            ss << "Mismatched dtypes for `" 
+               << cname 
+               << "`: attempted to append column of dtype `" 
+               << get_dtype_descr(other_col_dtype)
+               << "` to existing column of dtype `" 
+               << get_dtype_descr(col_dtype) << "`"
+               << std::endl;
+            std::cout << ss.str();
+            PSP_COMPLAIN_AND_ABORT(ss.str())
+        }
         src_cols.push_back(other.get_const_column(cname).get());
         dst_cols.push_back(get_column(cname).get());
         incoming.insert(cname);
@@ -548,6 +559,11 @@ t_data_table::promote_column(
         return;
     }
 
+    t_dtype current_dtype = m_schema.get_dtype(name);
+    if (current_dtype == new_dtype) {
+        return;
+    }
+
     t_uindex idx = m_schema.get_colidx(name);
     std::shared_ptr<t_column> current_col = m_columns[idx];
 
@@ -576,7 +592,9 @@ t_data_table::promote_column(
                     std::string fval = std::to_string(*val);
                     promoted_col->set_nth(i, fval);
                 } break;
-                default: { PSP_COMPLAIN_AND_ABORT("Bad promotion"); }
+                default: { 
+                    PSP_COMPLAIN_AND_ABORT("Columns can only be promoted to int64, float64, or string type.");
+                }
             }
         }
     }

@@ -7,7 +7,7 @@
  *
  */
 
-import Textfield from "fin-hypergrid/src/cellEditors/Textfield";
+import Textfield from "faux-hypergrid/src/cellEditors/Textfield";
 
 function px(n) {
     return n + "px";
@@ -62,7 +62,8 @@ function setEditorValueDatetime(x) {
 function setEditorValueText(updated) {
     // Move keyup so nav and edit don't conflict
     this.input.addEventListener("keydown", keydown.bind(this));
-    // refire mouseover so hover does not go away when mouse stays over edit cell
+    // refire mouseover so hover does not go away when mouse stays over edit
+    // cell
     this.input.addEventListener("mouseover", event => {
         var mouseMoveEvent = document.createEvent("MouseEvents");
         mouseMoveEvent.initMouseEvent(
