@@ -30,7 +30,6 @@ export class PerspectiveView extends DOMWidgetView {
             filters: this.model.get("filters"),
             plugin_config: this.model.get("plugin_config"),
             computed_columns: [],
-            client: this.model.get("client"),
             dark: this.model.get("dark"),
             editable: this.model.get("editable"),
             bindto: this.el,
@@ -123,33 +122,24 @@ export class PerspectiveView extends DOMWidgetView {
      * @param msg {PerspectiveJupyterMessage}
      */
     _handle_message(msg: PerspectiveJupyterMessage) {
-        // If in client-only mode (no Table on the python widget), message.data is an object containing "data" and "options". 
-        if (this.pWidget.client === true && msg.data["data"]) {
-            if (msg.data["cmd"] === "update") {
-                this.pWidget._update(msg.data["data"]);
-            } else {
-                this.pWidget.load(msg.data["data"], msg.data["options"]);
-            }
-        } else {
-            // Make a deep copy of each message - widget views share the same comm, so mutations on `msg` affect subsequent message handlers.
-            const message = JSON.parse(JSON.stringify(msg));
-            if (message.type === "table") {
-                const new_table = this.perspective_client.open_table(message.data);
-                this.pWidget.load(new_table);
+        // Make a deep copy of each message - widget views share the same comm, so mutations on `msg` affect subsequent message handlers.
+        const message = JSON.parse(JSON.stringify(msg));
+        if (message.type === "table") {
+            const new_table = this.client.open_table(message.data);
+            this.pWidget.load(new_table);
 
-                // Only call `init` after the viewer has a table.
-                this.perspective_client.send({
-                    id: -1,
-                    cmd: "init"
-                });
-            } else {
-                // Conform message to format expected by the perspective client
-                delete message.type;
-                if (typeof message.data === "string") {
-                    message.data = JSON.parse(message.data);
-                }
-                this.perspective_client._handle(message);
+            // Only call `init` after the viewer has a table.
+            this.client.send({
+                id: -1,
+                cmd: "init"
+            });
+        } else {
+            // Conform message to format expected by the perspective client
+            delete message.type;
+            if (typeof message.data === "string") {
+                message.data = JSON.parse(message.data);
             }
+            this.client._handle(message);
         }
     }
 

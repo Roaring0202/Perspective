@@ -10,7 +10,7 @@
 
 import "@finos/perspective-viewer";
 
-import {Table, TableData, TableOptions} from "@finos/perspective";
+import {Table, TableData} from "@finos/perspective";
 import {Message} from "@phosphor/messaging";
 import {Widget} from "@phosphor/widgets";
 import {MIME_TYPE, PSP_CLASS, PSP_CONTAINER_CLASS, PSP_CONTAINER_CLASS_DARK} from "./utils";
@@ -21,7 +21,6 @@ let _increment = 0;
 
 export interface PerspectiveWidgetOptions extends PerspectiveViewerOptions {
     dark?: boolean;
-    client?: boolean;
     title?: string;
     bindto?: HTMLElement;
     plugin_config?: PerspectiveViewerOptions;
@@ -68,9 +67,7 @@ export class PerspectiveWidget extends Widget {
         const plugin_config: PerspectiveViewerOptions = options.plugin_config || {};
         const dark: boolean = options.dark || false;
         const editable: boolean = options.editable || false;
-        const client: boolean = options.client || false;
 
-        this.client = client;
         this.dark = dark;
         this.editable = editable;
         this.plugin = plugin;
@@ -140,17 +137,8 @@ export class PerspectiveWidget extends Widget {
      *
      * @param table a `perspective.table` object.
      */
-    load(table: (TableData | Table), options?: TableOptions): void {
-        this.viewer.load(table, options);
-    }
-
-    /**
-     * Update the viewer with new data.
-     * 
-     * @param data 
-     */
-    _update(data: TableData): void {
-        this.viewer.update(data);
+    load(table: TableData | Table): void {
+        this.viewer.load(table);
     }
 
     get table(): Table {
@@ -350,7 +338,6 @@ export class PerspectiveWidget extends Widget {
 
     private _viewer: PerspectiveViewer;
     private _plugin_config: PerspectiveViewerOptions;
-    private _client: boolean;
     private _dark: boolean;
     private _editable: boolean;
     private _displayed: boolean;
