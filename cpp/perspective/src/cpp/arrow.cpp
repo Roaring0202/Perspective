@@ -37,12 +37,14 @@ namespace arrow {
         } else if (src == "float") {
             return DTYPE_FLOAT32;
         } else if (src == "double") {
-            return DTYPE_FLOAT64;
+            return DTYPE_FLOAT64; 
         } else if (src == "timestamp") {
             return DTYPE_TIME;
+        } else if (src == "date32" || src == "date64") {
+            return DTYPE_DATE;
         }
         std::stringstream ss;
-        ss << "Could not convert arrow type: " << src << std::endl;
+        ss << "Could not load arrow column of type `" << src << "`" << std::endl;
         PSP_COMPLAIN_AND_ABORT(ss.str());
         return DTYPE_STR;
     }
@@ -180,19 +182,21 @@ namespace arrow {
                 auto indices = scol->indices();
                 switch (indices->type()->id()) {
                     case ::arrow::Int8Type::type_id: {
-                        iter_col_copy<::arrow::Int8Array, uint32_t>(dest, indices, offset, len);
+                        iter_col_copy<::arrow::Int8Array, t_uindex>(dest, indices, offset, len);
                     } break;
                     case ::arrow::Int16Type::type_id: {
-                        iter_col_copy<::arrow::Int16Array, uint32_t>(dest, indices, offset, len);
+                        iter_col_copy<::arrow::Int16Array, t_uindex>(dest, indices, offset, len);
                     } break;
                     case ::arrow::Int32Type::type_id: {
-                        auto sindices = std::static_pointer_cast<::arrow::Int32Array>(indices);
-                        std::memcpy(dest->get_nth<std::int32_t>(offset),
-                            (void*)sindices->raw_values(), len * 4);
+                        iter_col_copy<::arrow::Int32Array, t_uindex>(dest, indices, offset, len);
+                    } break;
+                    case ::arrow::Int64Type::type_id: {
+                         iter_col_copy<::arrow::Int64Array, t_uindex>(dest, indices, offset, len);
                     } break;
                     default:
                         std::stringstream ss;
-                        ss << "Could not copy Arrow column of type '" << indices->type()->name() << "'" << std::endl;
+                        ss << "Could not copy dictionary array indices of type'" 
+                           << indices->type()->name() << "'" << std::endl;
                         PSP_COMPLAIN_AND_ABORT(ss.str());
                 }
             } break;
@@ -257,6 +261,37 @@ namespace arrow {
                     } break;
                 }
             } break;
+            case ::arrow::Date64Type::type_id: {
+                std::shared_ptr<::arrow::Date64Type> date_type
+                    = std::static_pointer_cast<::arrow::Date64Type>(src->type());
+                auto scol = std::static_pointer_cast<::arrow::Date64Array>(src);
+                const int64_t* vals = scol->raw_values();
+                for (uint32_t i = 0; i < len; i++) {
+                    std::chrono::milliseconds timestamp(vals[i]);
+                    date::sys_days days(date::floor<date::days>(timestamp));
+                    auto ymd = date::year_month_day{days};
+                    std::int32_t year = static_cast<std::int32_t>(ymd.year());
+                    std::uint32_t month = static_cast<std::uint32_t>(ymd.month());
+                    std::uint32_t day = static_cast<std::uint32_t>(ymd.day());
+                    dest->set_nth(offset + i, t_date(year, month, day));
+                }
+            } break;
+            case ::arrow::Date32Type::type_id: {
+                std::shared_ptr<::arrow::Date32Type> date_type
+                    = std::static_pointer_cast<::arrow::Date32Type>(src->type());
+                auto scol = std::static_pointer_cast<::arrow::Date32Array>(src);
+                const int32_t* vals = scol->raw_values();
+                for (uint32_t i = 0; i < len; i++) {
+                    date::days days{vals[i]};
+                    auto ymd = date::year_month_day{
+                        date::sys_days{days}
+                    };
+                    std::int32_t year = static_cast<std::int32_t>(ymd.year());
+                    std::uint32_t month = static_cast<std::uint32_t>(ymd.month());
+                    std::uint32_t day = static_cast<std::uint32_t>(ymd.day());
+                    dest->set_nth(offset + i, t_date(year, month, day));
+                }
+            } break;
             case ::arrow::FloatType::type_id: {
                 auto scol = std::static_pointer_cast<::arrow::FloatArray>(src);
                 std::memcpy(dest->get_nth<float>(offset), (void*)scol->raw_values(), len * 4);
@@ -265,6 +300,7 @@ namespace arrow {
                 auto scol = std::static_pointer_cast<::arrow::DoubleArray>(src);
                 std::memcpy(dest->get_nth<double>(offset), (void*)scol->raw_values(), len * 8);
             } break;
+            case ::arrow::Decimal128Type::type_id:
             case ::arrow::DecimalType::type_id: {
                 std::shared_ptr<::arrow::Decimal128Array> scol = std::static_pointer_cast<::arrow::DecimalArray>(src);
                 auto vals = (::arrow::Decimal128 *)scol->raw_values();

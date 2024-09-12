@@ -13,10 +13,11 @@ import {PerspectiveJupyterWidget} from "./widget";
 import {PerspectiveJupyterClient, PerspectiveJupyterMessage} from "./client";
 
 /**
- * `PerspectiveView` defines the plugin's DOM and how the plugin interacts with the DOM.
+ * `PerspectiveView` defines the plugin's DOM and how the plugin interacts with
+ * the DOM.
  */
 export class PerspectiveView extends DOMWidgetView {
-    pWidget: PerspectiveWidget;
+    pWidget: PerspectiveWidget;  // this should be pWidget, but temporarily calling it pWidget for widgets incompatibilities
     perspective_client: PerspectiveJupyterClient;
 
     _createElement(tagName: string) {
@@ -35,9 +36,7 @@ export class PerspectiveView extends DOMWidgetView {
             bindto: this.el,
             view: this
         });
-
         this.perspective_client = new PerspectiveJupyterClient(this);
-
         return this.pWidget.node;
     }
 
@@ -78,7 +77,8 @@ export class PerspectiveView extends DOMWidgetView {
     }
 
     /**
-     * Attach event handlers, and watch the DOM for state changes in order to reflect them back to Python.
+     * Attach event handlers, and watch the DOM for state changes in order to
+     * reflect them back to Python.
      */
     render() {
         super.render();
@@ -95,7 +95,8 @@ export class PerspectiveView extends DOMWidgetView {
         this.model.on("change:dark", this.dark_changed, this);
         this.model.on("change:editable", this.editable_changed, this);
 
-        // Watch the viewer DOM so that widget state is always synchronized with DOM attributes.
+        // Watch the viewer DOM so that widget state is always synchronized with
+        // DOM attributes.
         const observer = new MutationObserver(this._synchronize_state.bind(this));
         observer.observe(this.pWidget.viewer, {
             attributes: true,
@@ -104,9 +105,11 @@ export class PerspectiveView extends DOMWidgetView {
         });
 
         /**
-         * Request a table from the manager. If a table has been loaded, proxy it and kick off subsequent operations.
+         * Request a table from the manager. If a table has been loaded, proxy
+         * it and kick off subsequent operations.
          *
-         * If a table hasn't been loaded, the viewer won't get a response back and simply waits until it receives a table name.
+         * If a table hasn't been loaded, the viewer won't get a response back
+         * and simply waits until it receives a table name.
          */
         this.perspective_client.send({
             id: -2,
@@ -144,7 +147,30 @@ export class PerspectiveView extends DOMWidgetView {
     }
 
     /**
-     * When traitlets are updated in python, update the corresponding value on the front-end viewer.
+     * Given a message that commands the widget to load a dataset or table,
+     * process it.
+     * @param {PerspectiveJupyterMessage} msg
+     */
+    _handle_load_message(msg: PerspectiveJupyterMessage) {
+        if (this.pWidget.client === true) {
+            const data = msg.data["data"];
+            const options = msg.data["options"] || {};
+            this.pWidget.load(data, options);
+        } else {
+            const new_table = this.perspective_client.open_table(msg.data["table_name"]);
+            this.pWidget.load(new_table);
+
+            // Only call `init` after the viewer has a table.
+            this.perspective_client.send({
+                id: -1,
+                cmd: "init"
+            });
+        }
+    }
+
+    /**
+     * When traitlets are updated in python, update the corresponding value on
+     * the front-end viewer.
      */
     plugin_changed() {
         this.pWidget.plugin = this.model.get("plugin");

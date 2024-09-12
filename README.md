@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/finos/perspective.svg?branch=master)](https://travis-ci.org/finos/perspective)
 [![Appveyor](https://ci.appveyor.com/api/projects/status/github/finos/perspective?svg=true)](https://ci.appveyor.com/project/neilslinger/perspective)
 [![npm](https://img.shields.io/npm/v/@finos/perspective.svg?style=flat-square)](https://www.npmjs.com/package/@finos/perspective)
+[![PyPI](https://img.shields.io/pypi/v/perspective-python.svg)](https://pypi.python.org/pypi/perspective-python)
 [![FINOS - Operating](https://cdn.rawgit.com/finos/contrib-toolbox/master/images/badge-operating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Operating)
 
 
@@ -26,16 +27,18 @@ simple to build real-time & user configurable analytics entirely in the browser.
 
 - Integration with [Jupyterlab](https://github.com/finos/perspective/tree/master/packages/perspective-jupyterlab).
 
-- Runtimes for the Browser and Node.js.
+- Runtimes for the Browser, Python, and Node.js.
 
 ## Examples
 |||
 |:--|:--|
 |[Superstore](https://bl.ocks.org/texodus/372d406997d5522ebaafb17f0f521d97)| A static `superstore.arrow` demo.|
+|[Editable Superstore](https://bl.ocks.org/texodus/45b868833c9f456bd39a51e606412c5d)| A static `superstore.arrow` demo with editing enabled.|
 |[Linked Superstore](https://bl.ocks.org/texodus/08fb5f1afccbd33e333453dc70db88ea)| An example of `<perspective-viewer>`s linked through click events.|
 |[Dataset Explorer](https://bl.ocks.org/texodus/ecb5d086e0c9d52e414d2de6c93b5db3)| A configurable dataset performance tester. |
 |[Fractal](https://bl.ocks.org/texodus/1ce655d6bc0cc0d9db852d562af3e487)| `<perspective-viewer>` fractal playground.|
 |[Olympics](https://bl.ocks.org/texodus/6d4fa16fff331d71ac58ad256f0c5f94)| An example of sharing a single `perspective.table` among multiple `<perspective-viewer>`s.|
+|[Olympics Workspace](https://bl.ocks.org/zemeolotu/68f3f1c2535bdde1a296b90e9b434717)| An example of Perspective Workspace with multiple perspective widgets sharing the same table with one directional cross-filtering|
 |[Streaming](https://bl.ocks.org/texodus/9bec2f8041471bafc2c56db2272a9381)| A streaming random data demo.|
 |[Streaming Stock Trades](https://bl.ocks.org/timkpaine/064a50a309f25b80c9cfb0b2b84fbdf3)|A streaming financial data demo.|
 |[CSV](https://bl.ocks.org/texodus/02d8fd10aef21b19d6165cf92e43e668)|Upload a CSV of your own.|
@@ -47,7 +50,9 @@ simple to build real-time & user configurable analytics entirely in the browser.
 
 * [Project Site](https://perspective.finos.org/)
 * [Installation](https://perspective.finos.org/docs/md/installation.html)
-* [User's Guide](https://perspective.finos.org/docs/md/usage.html)
+* [Javascript User's Guide](https://perspective.finos.org/docs/md/js.html)
+* [Python User's Guide](https://perspective.finos.org/docs/md/python.html)
 * [Developer's Guide](https://perspective.finos.org/docs/md/development.html)
 * [Perspective API](https://github.com/finos/perspective/blob/master/packages/perspective/README.md)
 * [Perspective Viewer API](https://github.com/finos/perspective/blob/master/packages/perspective-viewer/README.md)
+* [Perspective Python API](https://perspective.finos.org/docs/obj/perspective-python.html)

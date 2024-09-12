@@ -15,6 +15,8 @@ using namespace perspective;
 namespace perspective {
 namespace numpy {
 
+    const std::vector<std::string> NumpyLoader::DATE_UNITS = {"[D]", "[W]", "[M]", "[Y]"};
+
     NumpyLoader::NumpyLoader(py::object accessor)
         : m_init(false)
         , m_has_numeric_dtype(false)
@@ -45,17 +47,28 @@ namespace numpy {
         std::vector<t_dtype> reconciled_types;
         std::uint32_t num_columns = m_names.size();
 
+        // Get numpy dtypes as string so we can tell the difference between dates and datetimes
+        std::vector<std::string> str_dtypes = m_accessor.attr("types")().cast<std::vector<std::string>>();
+
         for (auto i = 0; i < num_columns; ++i) {
+            std::string numpy_type_as_string = str_dtypes[i];
             t_dtype numpy_type = m_types[i];
             t_dtype inferred_type = inferred_types[i];
-            switch (numpy_type) {
-                case DTYPE_OBJECT: {
-                    // inferred type has the correct underlying type for the array
-                    reconciled_types.push_back(inferred_type);
-                } break;
-                default: {
-                    reconciled_types.push_back(numpy_type);
+
+            // Check whether column is a date or a datetime
+            if(numpy_type_as_string.find("datetime64") != std::string::npos) {
+                for (const std::string& unit : DATE_UNITS) {
+                    if (numpy_type_as_string.find(unit) != std::string::npos) {
+                        inferred_type = DTYPE_DATE;
+                    }
                 }
+            }
+
+            // Otherwise, numpy type takes precedence unless date/object - need specificity of inferred type
+            if (inferred_type == DTYPE_DATE || numpy_type == DTYPE_OBJECT) {
+                reconciled_types.push_back(inferred_type);
+            } else {
+                reconciled_types.push_back(numpy_type);
             }
         }
 
@@ -158,7 +171,7 @@ namespace numpy {
         }
 
         // Datetimes are not trivially copyable - they are float64 values that need to be read as int64
-        if (type == DTYPE_TIME) {
+        if (type == DTYPE_TIME || type == DTYPE_DATE) {
             fill_column_iter(array, tbl, col, name, np_dtype, type, cidx, is_update);
             fill_validity_map(col, mask_ptr, mask_size, is_update);
             return;
@@ -239,13 +252,13 @@ namespace numpy {
 
             double fval = item.cast<double>();
             if (fval > 2147483647 || fval < -2147483648) {
-                binding::WARN("Promoting %s to float from int32", name);
+                binding::WARN("Promoting column `%s` to float from int32", name);
                 tbl.promote_column(name, DTYPE_FLOAT64, i, true);
                 col = tbl.get_column(name);
                 type = DTYPE_FLOAT64;
                 col->set_nth(i, fval);
             } else if (isnan(fval)) {
-                binding::WARN("Promoting column %s to string from int32", name);
+                binding::WARN("Promoting column `%s` to string from int32", name);
                 tbl.promote_column(name, DTYPE_STR, i, false);
                 col = tbl.get_column(name);
                 fill_object_iter<std::string>(
@@ -276,7 +289,7 @@ namespace numpy {
 
             double fval = item.cast<double>();
             if (isnan(fval)) {
-                binding::WARN("Promoting %s to string from int64", name);
+                binding::WARN("Promoting column `%s` to string from int64", name);
                 tbl.promote_column(name, DTYPE_STR, i, false);
                 col = tbl.get_column(name);
                 fill_object_iter<std::string>(
@@ -308,7 +321,7 @@ namespace numpy {
             bool is_float = py::isinstance<py::float_>(item);
             bool is_numpy_nan = is_float && npy_isnan(item.cast<double>());
             if (!is_float || is_numpy_nan) {
-                binding::WARN("Promoting column %s to string from float64", name);
+                binding::WARN("Promoting column `%s` to string from float64", name);
                 tbl.promote_column(name, DTYPE_STR, i, false);
                 col = tbl.get_column(name);
                 fill_object_iter<std::string>(
@@ -389,7 +402,6 @@ namespace numpy {
                 }
                 continue;
             }
-
 
             auto date_components = item.cast<std::map<std::string, std::int32_t>>();
             t_date dt = t_date(date_components["year"], date_components["month"], date_components["day"]);

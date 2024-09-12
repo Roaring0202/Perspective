@@ -1,25 +1,26 @@
-@import "~@finos/perspective-viewer/src/less/variables.less";
+@import (reference) "~@finos/perspective-viewer/src/themes/material.less";
+@import (reference) "~@finos/perspective-viewer/src/themes/material.dark.less";
 
 div.PSPContainer,
 div.PSPContainer-dark {
     overflow: auto;
     resize: both;
-    padding-right: 20px;
-    padding-bottom: 20px;
+    padding-right: 5px;
+    padding-bottom: 5px;
     height: 500px;
     flex: 1;
 }
 
 div.PSPContainer {
-    @import "~@finos/perspective-viewer/src/themes/material.less";
+    .perspective-viewer-material();
 }
 
 div.PSPContainer-dark {
-    @import "~@finos/perspective-viewer/src/themes/material.dark.less";
+    .perspective-viewer-material-dark();
 }
 
 div.PSPContainer perspective-viewer,
 div.PSPContainer-dark perspective-viewer {
     display: block;
-    height: 95%;
+    height: 98%;
 }

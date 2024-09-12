@@ -163,10 +163,7 @@
 
     perspective-computed-column {
         --is_visible--before: var(--active-column-selector--content, "\25CF");
-        --row_draggable-background-color: var(
-            --column--background,
-            white
-        );
+        --row_draggable-background-color: var(--column--background, white);
         --row_draggable-border-color: var(--inactive--color, #ccc);
         --row_draggable-border-width: 0 0 1px 0;
         --row_draggable-overflow: hidden;
@@ -389,13 +386,6 @@
         .plugin_information--overflow-hint {
             white-space: nowrap;
         }
-    }
-
-    #divider {
-        min-height: 2px;
-        height: 2px;
-        margin: 15px 13px 15px 13px;
-        margin-bottom: 5px;
     }
 
     #drop_target {

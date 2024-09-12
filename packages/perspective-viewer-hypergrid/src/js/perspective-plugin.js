@@ -98,9 +98,15 @@ function setPSP(payload, force = false) {
 
     this.grid.properties.showTreeColumn = payload.isTree;
 
-    // Following call to setData signals the grid to call createColumns and dispatch the
-    // fin-hypergrid-schema-loaded event (in that order). Here we inject a createColumns override
-    // into `this` (behavior instance) to complete the setup before the event is dispatched.
+    const config = this.grid.behavior.dataModel._config;
+    const column_only = config.row_pivots.length === 0 && config.column_pivots.length > 0;
+    const selectable = !column_only && this.grid.behavior.dataModel._viewer.hasAttribute("selectable");
+    this.grid.addProperties(this.grid.get_dynamic_styles(selectable));
+
+    // Following call to setData signals the grid to call createColumns and
+    // dispatch the fin-hypergrid-schema-loaded event (in that order). Here we
+    // inject a createColumns override into `this` (behavior instance) to
+    // complete the setup before the event is dispatched.
     this.createColumns = createColumns;
     this.refreshColumns = refreshColumns;
 
@@ -116,11 +122,11 @@ function setPSP(payload, force = false) {
     } else {
         this.grid.sbVScroller.index = 0;
         this.grid.sbHScroller.index = 0;
+        this.grid.selectionModel.clear();
         this.grid.setData({
             data: payload.rows,
             schema: new_schema
         });
-        this.grid.selectionModel.clear();
     }
     this._memoized_schema = new_schema;
     this._memoized_pivots = payload.rowPivots;
@@ -159,7 +165,7 @@ function setColumnPropsByType(column) {
     }
     const config = this.grid.behavior.dataModel._config;
     const isEditable = this.grid.behavior.dataModel._viewer.hasAttribute("editable");
-    if (isEditable && config.row_pivots.length === 0 && config.row_pivots.length === 0) {
+    if (isEditable && config.row_pivots.length === 0 && config.column_pivots.length === 0) {
         props.editor = {
             integer: "perspective-number",
             string: "perspective-text",
@@ -233,8 +239,8 @@ function sortColumn(event) {
     const item_index = config.sort.findIndex(item => item[0] === column_name.trim());
     const already_sorted = item_index > -1;
 
-    // shift key to enable abs sorting
-    // alt key to not remove already sorted columns
+    // shift key to enable abs sorting alt key to not remove already sorted
+    // columns
     const abs_sorting = event.detail.keys && (event.detail.keys.indexOf("ALTSHIFT") > -1 || event.detail.keys.indexOf("ALT") > -1) && column.type !== "string";
     const shift_pressed = event.detail.keys && (event.detail.keys.indexOf("ALTSHIFT") > -1 || event.detail.keys.indexOf("SHIFT") > -1);
     let new_sort_direction;
@@ -249,14 +255,16 @@ function sortColumn(event) {
         new_sort_direction = viewer._increment_sort("none", column_sorting, abs_sorting);
     }
 
-    //if alt pressed and column is already sorted, we change the sort for the column and leave the rest as is
+    //if alt pressed and column is already sorted, we change the sort for the
+    //column and leave the rest as is
     if (shift_pressed && already_sorted) {
         if (new_sort_direction === "none") {
             config.sort.splice(item_index, 1);
         }
         viewer.sort = JSON.stringify(config.sort);
     } else if (shift_pressed) {
-        // if alt key is pressed and column is NOT already selected, append the new sort column
+        // if alt key is pressed and column is NOT already selected, append the
+        // new sort column
         config.sort.push([column_name, new_sort_direction]);
         viewer.sort = JSON.stringify(config.sort);
     } else {
@@ -316,6 +324,7 @@ export const install = function(grid) {
         }
 
         const filters = config.filter.concat(row_filters).concat(column_filters);
+        const action = this.grid.properties.rowSelection && this.grid.getSelectedRows().indexOf(y) === -1 ? "deselected" : "selected";
 
         this.grid.canvas.dispatchEvent(
             new CustomEvent("perspective-click", {
@@ -324,7 +333,8 @@ export const install = function(grid) {
                 detail: {
                     config: {filters},
                     column_names,
-                    row: r[0]
+                    row: r[0],
+                    action
                 }
             })
         );
@@ -342,6 +352,9 @@ export const install = function(grid) {
 
     // Corrects for deselection behavior on keyiup due to shadow-dom
     grid.canvas.hasFocus = function() {
+        if (!grid.div.isConnected) {
+            return;
+        }
         const grid_element = grid.div.parentNode.parentNode.host;
         const view_shadow_root = grid_element.parentNode.parentNode.parentNode.parentNode.parentNode;
         return view_shadow_root.activeElement === grid_element;
@@ -376,7 +389,8 @@ export const install = function(grid) {
             return;
         }
 
-        //we have repeated a click in the same spot deslect the value from last time
+        //we have repeated a click in the same spot deslect the value from last
+        //time
         if (hasCTRL && x === mousePoint.x && y === mousePoint.y) {
             grid.clearMostRecentSelection();
             grid.popMouseDown();
@@ -465,13 +479,17 @@ export const install = function(grid) {
         grid.moveSingleSelect(offsetX, offsetY);
     };
 
-    grid.canvas.resize = async function(force) {
-        const width = (this.width = Math.floor(this.div.clientWidth));
-        const height = (this.height = Math.floor(this.div.clientHeight));
+    function update_bounds() {
+        this.width = Math.floor(this.div.clientWidth);
+        this.height = Math.floor(this.div.clientHeight);
+        this.bounds = new rectangular.Rectangle(0, 0, this.width, this.height);
+        this.component.setBounds(this.bounds);
+    }
 
+    grid.canvas.resize = async function(force) {
         //fix ala sir spinka, see
-        //http://www.html5rocks.com/en/tutorials/canvas/hidpi/
-        //just add 'hdpi' as an attribute to the fin-canvas tag
+        //http://www.html5rocks.com/en/tutorials/canvas/hidpi/ just add 'hdpi'
+        //as an attribute to the fin-canvas tag
         let ratio = 1;
         const isHIDPI = window.devicePixelRatio && this.component.properties.useHiDPI;
         if (isHIDPI) {
@@ -482,29 +500,38 @@ export const install = function(grid) {
             ratio = devicePixelRatio / backingStoreRatio;
         }
 
-        this.bounds = new rectangular.Rectangle(0, 0, width, height);
-        this.component.setBounds(this.bounds);
+        update_bounds.call(this);
 
         let render = true;
-        if (height * ratio !== this.canvas.height || width * ratio !== this.canvas.width || force) {
-            while (render) {
-                if (!this.component.grid.behavior.dataModel._view) {
-                    // If we are awaiting this grid's initialization, yield until it is ready.
+        const start_time = performance.now();
+        const dataModel = this.component.grid.behavior.dataModel;
+        if (this.height * ratio !== this.canvas.height || this.width * ratio !== this.canvas.width || force) {
+            while (dataModel._view && render) {
+                if (performance.now() - start_time > 3000) {
+                    throw new Error("Timeout");
+                }
+                if (typeof render === "object") {
+                    // If we are awaiting this grid's initialization, yield
+                    // until it is ready.
                     await new Promise(setTimeout);
                 }
-                render = await new Promise(resolve => this.component.grid.behavior.dataModel.fetchData(undefined, resolve));
+
+                update_bounds.call(this);
+                render = await new Promise(resolve => dataModel.fetchData(undefined, resolve));
             }
         }
 
-        this.bounds = new rectangular.Rectangle(0, 0, width, height);
+        this.bounds = new rectangular.Rectangle(0, 0, this.width, this.height);
         this.component.setBounds(this.bounds);
-        this.resizeNotification();
+        if (dataModel._view) {
+            this.resizeNotification();
+        }
 
-        this.buffer.width = this.canvas.width = width * ratio;
-        this.buffer.height = this.canvas.height = height * ratio;
+        this.buffer.width = this.canvas.width = this.width * ratio;
+        this.buffer.height = this.canvas.height = this.height * ratio;
 
-        this.canvas.style.width = this.buffer.style.width = width + "px";
-        this.canvas.style.height = this.buffer.style.height = height + "px";
+        this.canvas.style.width = this.buffer.style.width = this.width + "px";
+        this.canvas.style.height = this.buffer.style.height = this.height + "px";
 
         this.bc.scale(ratio, ratio);
         if (isHIDPI && !this.component.properties.useBitBlit) {

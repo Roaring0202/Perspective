@@ -9,7 +9,7 @@
 
 import {get_type_config, get_types} from "@finos/perspective/dist/esm/config";
 
-function get_style(elem, name) {
+export function get_style(elem, name) {
     let value;
     if (window.ShadyCSS) {
         value = window.ShadyCSS.getComputedStyleValue(elem, name);
@@ -42,9 +42,9 @@ function get_font(elem, title) {
     const font_size = get_style(elem, `${title}font-size`);
     const font_family = get_style(elem, `${title}font-family`);
 
-    // FIXME this sucks but it is difficult to partially apply fonts in Hypergrid's API
-    // Fonts will not be picked up unless both font-size and font-family are defined
-    // for a specific scope.
+    // FIXME this sucks but it is difficult to partially apply fonts in
+    // Hypergrid's API Fonts will not be picked up unless both font-size and
+    // font-family are defined for a specific scope.
     if (!font_size || !font_family) {
         return undefined;
     }

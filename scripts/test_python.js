@@ -6,38 +6,28 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
+const {execute, docker, clean, resolve, getarg, bash, python_image} = require("./script_utils.js");
 
-const args = process.argv.slice(2);
-const resolve = require("path").resolve;
-const execSync = require("child_process").execSync;
-const execute = cmd => execSync(cmd, {stdio: "inherit"});
-
-const VALID_TARGETS = ["node", "table"];
-const HAS_TARGET = args.indexOf("--target") != -1;
-const VERBOSE = args.indexOf("--verbose") != -1;
-const PY2 = args.indexOf("--python2") != -1;
-
-function docker(target = "perspective", image = "python") {
-    console.log(`-- Creating ${image} docker image`);
-    let cmd = "docker run --rm -it";
-    if (process.env.PSP_CPU_COUNT) {
-        cmd += ` --cpus="${parseInt(process.env.PSP_CPU_COUNT)}.0"`;
-    }
-    cmd += ` -v $(pwd):/usr/src/app/python/${target} -w /usr/src/app/python/${target} perspective/${image}`;
-    return cmd;
-}
+const VERBOSE = getarg("--verbose");
+const IS_DOCKER = process.env.PSP_DOCKER;
+const IS_PY2 = getarg("--python2"); 
+const PYTHON = IS_PY2 ? "python2" : (getarg("--python38") ? "python3.8": "python3.7");
+const IMAGE = python_image(getarg("--manylinux2010") ? "manylinux2010": 
+                           getarg("--manylinux2014") ? "manylinux2014":
+                           "", PYTHON);
+const IS_FIX = getarg("--fix");
 
 try {
-    // dependencies need to be installed for test_python:table and test_python:node
-    let cmd;
-    let python = PY2 ? 'python2': 'python3';
+    // dependencies need to be installed for test_python:table and
+    // test_python:node
     if (process.env.PSP_DOCKER) {
-        cmd = `cd python/perspective &&  ${python}  -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
-        execute(`${docker("perspective", "python")} bash -c "${cmd}"`);
+        execute`${docker(IMAGE)} bash -c "cd \
+            python/perspective && TZ=UTC ${PYTHON} -m pytest \
+            ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective"`;
     } else {
-        const python_path = resolve(__dirname, "..", "python", "perspective");
-        cmd = `cd ${python_path} &&  ${python}  -m pytest ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
-        execute(cmd);
+        const python_path = resolve`${__dirname}/../python/perspective`;
+        execute`cd ${python_path} && TZ=UTC ${PYTHON} -m pytest \
+            ${VERBOSE ? "-vv" : "-v"} perspective --cov=perspective`;
     }
 } catch (e) {
     console.log(e.message);

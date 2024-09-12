@@ -1,4 +1,4 @@
-# *****************************************************************************
+################################################################################
 #
 # Copyright (c) 2019, the Perspective Authors.
 #
@@ -17,7 +17,7 @@ VersionInfo = namedtuple('VersionInfo', [
 ])
 
 # DO NOT EDIT THIS DIRECTLY!  It is managed by bumpversion
-version_info = VersionInfo(0, 4, 0, 'rc', 2)
+version_info = VersionInfo(0, 4, 0, 'rc', 6)
 
 _specifier_ = {'alpha': 'alpha', 'beta': 'beta', 'rc': 'rc', 'final': ''}
 

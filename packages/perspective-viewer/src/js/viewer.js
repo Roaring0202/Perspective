@@ -10,7 +10,7 @@
 import "@webcomponents/webcomponentsjs";
 import "./polyfill.js";
 
-import {bindTemplate, json_attribute, array_attribute, copy_to_clipboard} from "./utils.js";
+import {bindTemplate, json_attribute, array_attribute, copy_to_clipboard, throttlePromise} from "./utils.js";
 import {renderers, register_debug_plugin} from "./viewer/renderers.js";
 import {COMPUTATIONS} from "./computed_column.js";
 import "./row.js";
@@ -35,7 +35,7 @@ import {ActionElement} from "./viewer/action_element.js";
  * @module perspective-viewer
  */
 
-const PERSISTENT_ATTRIBUTES = ["editable", "plugin", "row-pivots", "column-pivots", "aggregates", "filters", "sort", "computed-columns", "columns"];
+const PERSISTENT_ATTRIBUTES = ["selectable", "editable", "plugin", "row-pivots", "column-pivots", "aggregates", "filters", "sort", "computed-columns", "columns"];
 
 /**
  * HTMLElement class for `<perspective-viewer>` custom element.  This class is
@@ -43,9 +43,10 @@ const PERSISTENT_ATTRIBUTES = ["editable", "plugin", "row-pivots", "column-pivot
  * instead, instances of the class are created through the Custom Elements DOM
  * API.
  *
- * Properties of an instance of this class, such as {@link module:perspective_viewer~PerspectiveViewer#columns},
- * are reflected on the DOM element as Attributes, and should be accessed as
- * such - e.g. `instance.setAttribute("columns", JSON.stringify(["a", "b"]))`.
+ * Properties of an instance of this class, such as
+ * {@link module:perspective_viewer~PerspectiveViewer#columns}, are reflected on
+ * the DOM element as Attributes, and should be accessed as such - e.g.
+ * `instance.setAttribute("columns", JSON.stringify(["a", "b"]))`.
  *
  * @class PerspectiveViewer
  * @extends {HTMLElement}
@@ -64,7 +65,7 @@ class PerspectiveViewer extends ActionElement {
         this._show_config = true;
         this._show_warnings = true;
         this.__render_times = [];
-        window.addEventListener("load", this._resize_handler);
+        this._resize_handler = this.notifyResize.bind(this);
         window.addEventListener("resize", this._resize_handler);
     }
 
@@ -88,8 +89,8 @@ class PerspectiveViewer extends ActionElement {
      *
      * @kind member
      * @type {array<string>} Array of arrays tuples of column name and
-     * direction, where the possible values are "asc", "desc", "asc abs",
-     * "desc abs" and "none".
+     * direction, where the possible values are "asc", "desc", "asc abs", "desc
+     * abs" and "none".
      * @fires PerspectiveViewer#perspective-config-update
      * @example <caption>via Javascript DOM</caption>
      * let elem = document.getElementById('my_viewer');
@@ -157,6 +158,8 @@ class PerspectiveViewer extends ActionElement {
         this._debounce_update();
     }
 
+    /* eslint-disable max-len */
+
     /**
      * The set of visible columns.
      *
@@ -198,6 +201,8 @@ class PerspectiveViewer extends ActionElement {
         })();
     }
 
+    /* eslint-enable max-len */
+
     /**
      * The set of column aggregate configurations.
      *
@@ -212,7 +217,8 @@ class PerspectiveViewer extends ActionElement {
      * let elem = document.getElementById('my_viewer');
      * elem.setAttribute('aggregates', JSON.stringify({x: "distinct count"}));
      * @example <caption>via HTML</caption>
-     * <perspective-viewer aggregates='{"x": "distinct count"}'></perspective-viewer>
+     * <perspective-viewer aggregates='{"x": "distinct count"}'>
+     * </perspective-viewer>
      */
     @json_attribute
     aggregates(show) {
@@ -227,7 +233,7 @@ class PerspectiveViewer extends ActionElement {
         lis.map(x => {
             let agg = show[x.getAttribute("name")];
             if (agg) {
-                x.setAttribute("aggregate", agg);
+                x.setAttribute("aggregate", Array.isArray(agg) ? JSON.stringify(agg) : agg);
             }
         });
         this.dispatchEvent(new Event("perspective-config-update"));
@@ -238,13 +244,11 @@ class PerspectiveViewer extends ActionElement {
      * The set of column filter configurations.
      *
      * @kind member
-     * @type {array} filters An arry of filter config objects.  A filter
-     * config object is an array of three elements:
-     *     * The column name.
-     *     * The filter operation as a string.  See
-     *       {@link perspective/src/js/config/constants.js}
-     *     * The filter argument, as a string, float or Array<string> as the
-     *       filter operation demands.
+     * @type {array} filters An arry of filter config objects.  A filter config
+     * object is an array of three elements: * The column name. * The filter
+     * operation as a string.  See
+     * {@link perspective/src/js/config/constants.js} * The filter argument, as
+     * a string, float or Array<string> as the filter operation demands.
      * @fires PerspectiveViewer#perspective-config-update
      * @example <caption>via Javascript DOM</caption>
      * let filters = [
@@ -254,7 +258,8 @@ class PerspectiveViewer extends ActionElement {
      * let elem = document.getElementById('my_viewer');
      * elem.setAttribute('filters', JSON.stringify(filters));
      * @example <caption>via HTML</caption>
-     * <perspective-viewer filters='[["x", "<", 3], ["y", "contains", "abc"]]'></perspective-viewer>
+     * <perspective-viewer filters='[["x", "<", 3], ["y", "contains", "abc"]]'>
+     * </perspective-viewer>
      */
     @array_attribute
     filters(filters) {
@@ -392,6 +397,50 @@ class PerspectiveViewer extends ActionElement {
     }
 
     /**
+     * Determines the render throttling behavior.  Can be an integer, for
+     * millisecond window to throttle render event;  or, if `undefined`,
+     * will try to determine the optimal throttle time from this component's
+     * render framerate.
+     *
+     * @kind member
+     * @type {integer|string} The throttle rate - milliseconds (integer), or the
+     * enum "adaptive" for a dynamic throttle based on render time.
+     * @example
+     * <!-- Only draws at most 1 frame/sec. -->
+     * <perspective-viewer throttle="1000"></perspective-viewer>
+     */
+    set throttle(x) {
+        if (x === "null") {
+            if (this.hasAttribute("throttle")) {
+                this.removeAttribute("throttle");
+            }
+        }
+        // Returns the throttle time, but also perform validaiton - we only want
+        // the latter here.
+        this._calculate_throttle_timeout();
+    }
+
+    /*
+     * Determines whether row selections is enabled on this viewer (though it is
+     * ultimately up to the plugin as to whether selectable is implemented).
+     *
+     * @kind member
+     * @type {boolean} Is this viewer editable?
+     * @fires PerspectiveViewer#perspective-config-update
+     */
+    set selectable(x) {
+        if (x === "null") {
+            if (this.hasAttribute("selectable")) {
+                this.removeAttribute("selectable");
+            }
+        } else {
+            this.toggleAttribute("selectable", true);
+        }
+        this._debounce_update({force_update: true});
+        this.dispatchEvent(new Event("perspective-config-update"));
+    }
+
+    /**
      * This element's `perspective` worker instance.  This property is not
      * reflected as an HTML attribute, and is readonly;  it can be effectively
      * set however by calling the `load() method with a `perspective.table`
@@ -418,7 +467,8 @@ class PerspectiveViewer extends ActionElement {
 
     /**
      * This element's `perspective.table.view` instance.  The instance itself
-     * will change after every `PerspectiveViewer#perspective-config-update` event.
+     * will change after every `PerspectiveViewer#perspective-config-update`
+     * event.
      *
      * @readonly
      */
@@ -432,14 +482,10 @@ class PerspectiveViewer extends ActionElement {
      *
      * @param {any} data The data to load.  Works with the same input types
      * supported by `perspective.table`.
-     * @returns {Promise<void>} A promise which resolves once the data is
-     * loaded and a `perspective.view` has been created.
-     * @fires module:perspective_viewer~PerspectiveViewer#perspective-click PerspectiveViewer#perspective-view-update
-     * @example <caption>Load JSON</caption>
-     * const my_viewer = document.getElementById('#my_viewer');
-     * my_viewer.load([
-     *     {x: 1, y: 'a'},
-     *     {x: 2, y: 'b'}
+     * @returns {Promise<void>} A promise which resolves once the data is loaded
+     * and a `perspective.view` has been created.
+     * @fires module:perspective_viewer~PerspectiveViewer#perspective-click
+     * PerspectiveViewer#perspective-view-update
      * ]);
      * @example <caption>Load CSV</caption>
      * const my_viewer = document.getElementById('#my_viewer');
@@ -488,10 +534,11 @@ class PerspectiveViewer extends ActionElement {
      * Determine whether to reflow the viewer and redraw.
      *
      */
-    notifyResize() {
+    @throttlePromise
+    async notifyResize(immediate) {
         this._check_responsive_layout();
         if (!document.hidden && this.offsetParent) {
-            this._plugin.resize.call(this);
+            await this._plugin.resize.call(this, immediate);
         }
     }
 
@@ -633,7 +680,6 @@ class PerspectiveViewer extends ActionElement {
      * Reset's this element's view state and attributes to default.  Does not
      * delete this element's `perspective.table` or otherwise modify the data
      * state.
-     *
      */
     reset() {
         this.removeAttribute("row-pivots");
@@ -711,9 +757,11 @@ class PerspectiveViewer extends ActionElement {
 
     /**
      * Opens/closes the element's config menu.
+     *
+     * @async
      */
-    toggleConfig() {
-        this._toggle_config();
+    async toggleConfig() {
+        await this._toggle_config();
     }
 }
 

@@ -93,6 +93,7 @@ PYBIND11_MODULE(libbinding, m)
         .def("get_row_expanded", &View<t_ctx0>::get_row_expanded)
         .def("schema", &View<t_ctx0>::schema)
         .def("column_names", &View<t_ctx0>::column_names)
+        .def("column_paths", &View<t_ctx0>::column_paths)
         .def("_get_deltas_enabled", &View<t_ctx0>::_get_deltas_enabled)
         .def("_set_deltas_enabled", &View<t_ctx0>::_set_deltas_enabled)
         .def("get_context", &View<t_ctx0>::get_context)
@@ -118,6 +119,7 @@ PYBIND11_MODULE(libbinding, m)
         .def("set_depth", &View<t_ctx1>::set_depth)
         .def("schema", &View<t_ctx1>::schema)
         .def("column_names", &View<t_ctx1>::column_names)
+        .def("column_paths", &View<t_ctx1>::column_paths)
         .def("_get_deltas_enabled", &View<t_ctx1>::_get_deltas_enabled)
         .def("_set_deltas_enabled", &View<t_ctx1>::_set_deltas_enabled)
         .def("get_context", &View<t_ctx1>::get_context)
@@ -143,6 +145,7 @@ PYBIND11_MODULE(libbinding, m)
         .def("set_depth", &View<t_ctx2>::set_depth)
         .def("schema", &View<t_ctx2>::schema)
         .def("column_names", &View<t_ctx2>::column_names)
+        .def("column_paths", &View<t_ctx2>::column_paths)
         .def("_get_deltas_enabled", &View<t_ctx2>::_get_deltas_enabled)
         .def("_set_deltas_enabled", &View<t_ctx2>::_set_deltas_enabled)
         .def("get_context", &View<t_ctx2>::get_context)
@@ -163,7 +166,7 @@ PYBIND11_MODULE(libbinding, m)
      */
     py::class_<t_view_config>(m, "t_view_config")
         .def(py::init<std::vector<std::string>, std::vector<std::string>,
-            tsl::ordered_map<std::string, std::string>, std::vector<std::string>,
+            tsl::ordered_map<std::string, std::vector<std::string>>, std::vector<std::string>,
             std::vector<std::tuple<std::string, std::string, std::vector<t_tscalar>>>,
             std::vector<std::vector<std::string>>, std::string, bool>())
         .def("add_filter_term", &t_view_config::add_filter_term);

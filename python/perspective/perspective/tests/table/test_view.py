@@ -1,4 +1,4 @@
-# *****************************************************************************
+################################################################################
 #
 # Copyright (c) 2019, the Perspective Authors.
 #
@@ -70,6 +70,111 @@ class TestView(object):
             {"2|a": 1, "2|b": 2, "4|a": None, "4|b": None},
             {"2|a": None, "2|b": None, "4|a": 3, "4|b": 4}
         ]
+
+    # column path
+
+    def test_view_column_path_zero(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view()
+        paths = view.column_paths()
+        assert paths == ["a", "b"]
+
+    def test_view_column_path_zero_schema(self):
+        data = {
+            "a": int,
+            "b": float
+        }
+        tbl = Table(data)
+        view = tbl.view()
+        paths = view.column_paths()
+        assert paths == ["a", "b"]
+
+    def test_view_column_path_zero_hidden(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view(columns=["b"])
+        paths = view.column_paths()
+        assert paths == ["b"]
+
+    def test_view_column_path_zero_respects_order(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view(columns=["b", "a"])
+        paths = view.column_paths()
+        assert paths == ["b", "a"]
+
+    def test_view_column_path_one(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view(row_pivots=["a"])
+        paths = view.column_paths()
+        assert paths == ["__ROW_PATH__", "a", "b"]
+
+    def test_view_column_path_two(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view(row_pivots=["a"], column_pivots=["b"])
+        paths = view.column_paths()
+        assert paths == ["__ROW_PATH__", "1.5|a", "1.5|b", "2.5|a", "2.5|b", "3.5|a", "3.5|b"]
+
+    def test_view_column_path_two_column_only(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5]
+        }
+        tbl = Table(data)
+        view = tbl.view(column_pivots=["b"])
+        paths = view.column_paths()
+        assert paths == ["1.5|a", "1.5|b", "2.5|a", "2.5|b", "3.5|a", "3.5|b"]
+
+    def test_view_column_path_hidden_sort(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5],
+            "c": [3, 2, 1]
+        }
+        tbl = Table(data)
+        view = tbl.view(columns=["a", "b"], sort=[["c", "desc"]])
+        paths = view.column_paths()
+        assert paths == ["a", "b"]
+
+    def test_view_column_path_hidden_col_sort(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [1.5, 2.5, 3.5],
+            "c": [3, 2, 1]
+        }
+        tbl = Table(data)
+        view = tbl.view(column_pivots=["a"], columns=["a", "b"], sort=[["c", "col desc"]])
+        paths = view.column_paths()
+        assert paths == ["1|a", "1|b", "2|a", "2|b", "3|a", "3|b"]
+
+    def test_view_column_path_pivot_by_bool(self):
+        data = {
+            "a": [1, 2, 3],
+            "b": [True, False, True],
+            "c": [3, 2, 1]
+        }
+        tbl = Table(data)
+        view = tbl.view(column_pivots=["b"], columns=["a", "b", "c"])
+        paths = view.column_paths()
+        assert paths == ["false|a", "false|b", "false|c", "true|a", "true|b", "true|c"]
 
     # schema correctness
 
@@ -276,6 +381,40 @@ class TestView(object):
         assert view.to_records() == [
             {"__ROW_PATH__": [], "a": 1},
             {"__ROW_PATH__": ["2019-01-01 05:05:05.000"], "a": 1}
+        ]
+
+    def test_view_aggregate_multiple_columns(self):
+        data = [
+            {"a": "a", "x": 1, "y": 200},
+            {"a": "a", "x": 2, "y": 100},
+            {"a": "a", "x": 3, "y": None}
+        ]
+        tbl = Table(data)
+        view = tbl.view(
+            aggregates={"y": ["weighted mean", "x"]},
+            row_pivots=["a"],
+            columns=['y']
+        )
+        assert view.to_records() == [
+            {"__ROW_PATH__": [], "y": (1.0 * 200 + 2 * 100) / (1.0 + 2)},
+            {"__ROW_PATH__": ["a"], "y": (1.0 * 200 + 2 * 100) / (1.0 + 2)}
+        ]
+
+    def test_view_aggregate_multiple_columns_with_negative_weights(self):
+        data = [
+            {"a": "a", "x": 1, "y": 200},
+            {"a": "a", "x": -2, "y": 100},
+            {"a": "a", "x": 3, "y": None}
+        ]
+        tbl = Table(data)
+        view = tbl.view(
+            aggregates={"y": ["weighted mean", "x"]},
+            row_pivots=["a"],
+            columns=['y']
+        )
+        assert view.to_records() == [
+            {"__ROW_PATH__": [], "y": (1 * 200 + (-2) * 100) / (1 - 2)},
+            {"__ROW_PATH__": ["a"], "y": (1 * 200 + (-2) * 100) / (1 - 2)}
         ]
 
     # sort

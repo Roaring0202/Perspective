@@ -100,16 +100,141 @@ export const COMPUTATIONS = {
     week_bucket: new Computation("Bucket (W)", x => `week_bucket(${x})`, "datetime", "date", week_bucket, ["Time"]),
     month_bucket: new Computation("Bucket (M)", x => `month_bucket(${x})`, "datetime", "date", month_bucket, ["Time"]),
     year_bucket: new Computation("Bucket (Y)", x => `year_bucket(${x})`, "datetime", "date", year_bucket, ["Time"]),
-    add: new Computation("+", (x, y) => `${x} + ${y}`, "float", "float", (a, b) => a + b, ["Math"], 2),
-    subtract: new Computation("-", (x, y) => `${x} - ${y}`, "float", "float", (a, b) => a - b, ["Math"], 2),
-    multiply: new Computation("*", (x, y) => `${x} * ${y}`, "float", "float", (a, b) => a * b, ["Math"], 2),
-    divide: new Computation("/", (x, y) => `${x} / ${y}`, "float", "float", (a, b) => a / b, ["Math"], 2),
-    percent_a_of_b: new Computation("%", (x, y) => `${x} %% ${y}`, "float", "float", (a, b) => (a / b) * 100, ["Math"], 2),
-    uppercase: new Computation("Uppercase", x => `uppercase(${x})`, "string", "string", x => x.toUpperCase(), ["Text"]),
-    lowercase: new Computation("Lowercase", x => `lowercase(${x})`, "string", "string", x => x.toLowerCase(), ["Text"]),
-    length: new Computation("length", x => `length(${x})`, "string", "integer", x => x.length, ["Text"]),
-    concat_space: new Computation("concat_space", x => `concat_space(${x})`, "string", "string", (a, b) => a + " " + b, ["Text"], 2),
-    concat_comma: new Computation("concat_comma", x => `concat_comma(${x})`, "string", "string", (a, b) => a + ", " + b, ["Text"], 2)
+    "10_bucket": new Computation(
+        "Bucket (10)",
+        x => `bin10(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 10) * 10,
+        ["Math"]
+    ),
+    "100_bucket": new Computation(
+        "Bucket (100)",
+        x => `bin100(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 100) * 100,
+        ["Math"]
+    ),
+    "1000_bucket": new Computation(
+        "Bucket (1000)",
+        x => `bin1000(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 1000) * 1000,
+        ["Math"]
+    ),
+    "0.1_bucket": new Computation(
+        "Bucket (1/10)",
+        x => `bin10th(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 0.1) * 0.1,
+        ["Math"]
+    ),
+    "0.01_bucket": new Computation(
+        "Bucket (1/100)",
+        x => `bin100th(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 0.01) * 0.01,
+        ["Math"]
+    ),
+    "0.001_bucket": new Computation(
+        "Bucket (1/1000)",
+        x => `bin1000th(${x})`,
+        "float",
+        "float",
+        x => Math.floor(x / 0.001) * 0.001,
+        ["Math"]
+    ),
+    add: new Computation(
+        "+",
+        (x, y) => `${x} + ${y}`,
+        "float",
+        "float",
+        (a, b) => a + b,
+        ["Math"],
+        2
+    ),
+    subtract: new Computation(
+        "-",
+        (x, y) => `${x} - ${y}`,
+        "float",
+        "float",
+        (a, b) => a - b,
+        ["Math"],
+        2
+    ),
+    multiply: new Computation(
+        "*",
+        (x, y) => `${x} * ${y}`,
+        "float",
+        "float",
+        (a, b) => a * b,
+        ["Math"],
+        2
+    ),
+    divide: new Computation(
+        "/",
+        (x, y) => `${x} / ${y}`,
+        "float",
+        "float",
+        (a, b) => a / b,
+        ["Math"],
+        2
+    ),
+    percent_a_of_b: new Computation(
+        "%",
+        (x, y) => `${x} %% ${y}`,
+        "float",
+        "float",
+        (a, b) => (a / b) * 100,
+        ["Math"],
+        2
+    ),
+    uppercase: new Computation(
+        "Uppercase",
+        x => `uppercase(${x})`,
+        "string",
+        "string",
+        x => x.toUpperCase(),
+        ["Text"]
+    ),
+    lowercase: new Computation(
+        "Lowercase",
+        x => `lowercase(${x})`,
+        "string",
+        "string",
+        x => x.toLowerCase(),
+        ["Text"]
+    ),
+    length: new Computation(
+        "length",
+        x => `length(${x})`,
+        "string",
+        "integer",
+        x => x.length,
+        ["Text"]
+    ),
+    concat_space: new Computation(
+        "concat_space",
+        x => `concat_space(${x})`,
+        "string",
+        "string",
+        (a, b) => a + " " + b,
+        ["Text"],
+        2
+    ),
+    concat_comma: new Computation(
+        "concat_comma",
+        x => `concat_comma(${x})`,
+        "string",
+        "string",
+        (a, b) => a + ", " + b,
+        ["Text"],
+        2
+    )
 };
 
 function _insert_tree(name, elem, tree) {
@@ -271,7 +396,8 @@ class ComputedColumn extends HTMLElement {
             const current_column_type = current_column.getAttribute("type");
             event.swapTarget = this.state.swap_target;
 
-            // take the column at the drop target, and set it to the column being swapped
+            // take the column at the drop target, and set it to the column
+            // being swapped
             this._set_input_column(event, current_column_name, current_column_type);
 
             // reset swap_target and currentTarget
@@ -295,7 +421,8 @@ class ComputedColumn extends HTMLElement {
     // Called when the column passes over and then leaves the drop target
     _pass_column(event) {
         const src = event.currentTarget;
-        // are we inside the column? if we are, prevent further calls which cause flickering
+        // are we inside the column? if we are, prevent further calls which
+        // cause flickering
         const bounds = src.getBoundingClientRect();
         const inside_x = event.pageX >= bounds.left && event.pageX <= bounds.right - 2;
         const inside_y = event.pageY >= bounds.top && event.pageY <= bounds.bottom - 2;
@@ -451,7 +578,8 @@ class ComputedColumn extends HTMLElement {
         let reset_inputs = true;
 
         if (this.state["computation"]) {
-            // do we need to reset the input? if types/num_params differ then yes
+            // do we need to reset the input? if types/num_params differ then
+            // yes
             reset_inputs = input_type !== this.state["computation"].input_type || num_params !== this.state["computation"].num_params;
         }
 
@@ -538,7 +666,8 @@ class ComputedColumn extends HTMLElement {
         this._computation_selector = this.shadowRoot.querySelector("#psp-cc-computation__select");
         this._computation_type = this.shadowRoot.querySelector("#psp-cc-computation__type");
         this._input_columns = this.shadowRoot.querySelector("#psp-cc-computation-inputs");
-        //this._delete_button = this.shadowRoot.querySelector('#psp-cc-button-delete');
+        //this._delete_button =
+        //this.shadowRoot.querySelector('#psp-cc-button-delete');
         this._save_button = this.shadowRoot.querySelector("#psp-cc-button-save");
     }
 
@@ -550,7 +679,8 @@ class ComputedColumn extends HTMLElement {
             this.state["name_edited"] = this._column_name_input.innerText && this._column_name_input.innerText.length > 0;
             this._set_column_name(event);
         });
-        //this._delete_button.addEventListener('click', this._delete_computed_column.bind(this));
+        //this._delete_button.addEventListener('click',
+        //this._delete_computed_column.bind(this));
         this._save_button.addEventListener("click", this._save_computed_column.bind(this));
     }
 }
