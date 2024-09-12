@@ -258,6 +258,16 @@ export class PerspectiveWidget extends Widget {
     }
 
     /**
+     * True if the widget is in client-only mode, i.e. the browser has ownership of the widget's data.
+     */
+    get client(): boolean {
+        return this._client;
+    }
+    set client(client: boolean) {
+        this._client = client;
+    }
+
+    /**
      * Enable or disable dark mode by re-rendering the viewer.
      */
     get dark(): boolean {

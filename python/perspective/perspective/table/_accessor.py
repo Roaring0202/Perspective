@@ -5,12 +5,28 @@
 # This file is part of the Perspective library, distributed under the terms of
 # the Apache License 2.0.  The full license can be found in the LICENSE file.
 #
+import six
 import pandas
 import numpy
 from math import isnan
-from .libbinding import t_dtype
 from ._date_validator import _PerspectiveDateValidator
 from ..core.data import deconstruct_numpy
+from ..core.exception import PerspectiveError
+
+try:
+    from .libbinding import t_dtype
+except ImportError:
+    pass
+
+
+def _flatten_structure(array):
+    '''Flatten numpy.recarray or structured arrays into a dict.'''
+    if six.PY2:
+        # recarrays/structured arrays have weird bit offsets in py2 - make a copy of the array to fix
+        columns = [numpy.copy(array[col]) for col in array.dtype.names]
+    else:
+        columns = [array[col] for col in array.dtype.names]
+    return dict(zip(array.dtype.names, columns))
 
 
 def _type_to_format(data_or_schema):
@@ -43,21 +59,21 @@ def _type_to_format(data_or_schema):
                 return False, 2, data_or_schema
             elif isinstance(v, list) or iter(v):
                 # if columns entries are iterable, type 1
-                # if isinstance(v, numpy.ndarray):
-                # return True, 1, data_or_schema
-                return False, 1, data_or_schema
+                return isinstance(v, numpy.ndarray), 1, data_or_schema
             else:
                 # Can't process
                 raise NotImplementedError("Dict values must be list or type!")
         # Can't process
         raise NotImplementedError("Dict values must be list or type!")
-    elif isinstance(data_or_schema, numpy.recarray):
-        columns = [data_or_schema[col] for col in data_or_schema.dtype.names]
-        return True, 1, dict(zip(data_or_schema.dtype.names, columns))
+    elif isinstance(data_or_schema, numpy.ndarray):
+        # structured or record array
+        if not isinstance(data_or_schema.dtype.names, tuple):
+            raise NotImplementedError("Data should be dict of numpy.ndarray or a structured array.")
+        return True, 1, _flatten_structure(data_or_schema)
     else:
         if not (isinstance(data_or_schema, pandas.DataFrame) or isinstance(data_or_schema, pandas.Series)):
             # if pandas not installed or is not a dataframe or series
-            raise NotImplementedError("Must be dict or list!")
+            raise NotImplementedError("Data must be dataframe, dict, list, numpy.recarray, or a numpy structured array.")
         else:
             from ..core.data import deconstruct_pandas
 
@@ -65,7 +81,7 @@ def _type_to_format(data_or_schema):
             df, _ = deconstruct_pandas(data_or_schema)
 
             # try to squash object dtype as much as possible
-            df.fillna(value=pandas.np.nan, inplace=True)
+            df.fillna(value=numpy.nan, inplace=True)
 
             return True, 1, {c: df[c].values for c in df.columns}
 
@@ -86,11 +102,7 @@ class _PerspectiveAccessor(object):
         elif isinstance(self._data_or_schema, dict):
             self._names = list(self._data_or_schema.keys())
 
-        # if pandas dataframe, use types from dataframe
-        if self._is_numpy:
-            self._types = [col.dtype for col in self._data_or_schema.values()]
-        else:
-            self._types = []
+        self._types = []
 
     def data(self):
         return self._data_or_schema
@@ -134,7 +146,7 @@ class _PerspectiveAccessor(object):
         except (KeyError, IndexError):
             return None
 
-    def marshal(self, cidx, ridx, type):
+    def marshal(self, cidx, ridx, dtype):
         '''Returns the element at the specified column and row index, and marshals it into an object compatible with the core engine's `fill` method.
 
         If DTYPE_DATE or DTYPE_TIME is specified for a string value, attempt to parse the string value or return `None`.
@@ -142,7 +154,7 @@ class _PerspectiveAccessor(object):
         Args:
             cidx (int)
             ridx (int)
-            type (.libbinding.t_dtype)
+            dtype (.libbinding.t_dtype)
 
         Returns:
             object or None
@@ -159,44 +171,40 @@ class _PerspectiveAccessor(object):
         elif isinstance(val, list) and len(val) == 1:
             # strip out values encased lists
             val = val[0]
-        elif type == t_dtype.DTYPE_INT32 or type == t_dtype.DTYPE_INT64:
-            if not isinstance(val, bool) and isinstance(val, float):
+        elif dtype == t_dtype.DTYPE_INT32 or dtype == t_dtype.DTYPE_INT64:
+            if not isinstance(val, bool) and isinstance(val, (float, numpy.floating)):
                 # should be able to update int columns with either ints or floats
                 val = int(val)
-        elif type == t_dtype.DTYPE_FLOAT32 or type == t_dtype.DTYPE_FLOAT64:
-            if not isinstance(val, bool) and isinstance(val, int):
+        elif dtype == t_dtype.DTYPE_FLOAT32 or dtype == t_dtype.DTYPE_FLOAT64:
+            if not isinstance(val, bool) and isinstance(val, (int, numpy.integer)):
                 # should be able to update float columns with either ints or floats
                 val = float(val)
-        elif type == t_dtype.DTYPE_DATE:
+        elif dtype == t_dtype.DTYPE_DATE:
             # return datetime.date
             if isinstance(val, str):
                 parsed = self._date_validator.parse(val)
                 val = self._date_validator.to_date_components(parsed)
             else:
                 val = self._date_validator.to_date_components(val)
-        elif type == t_dtype.DTYPE_TIME:
+        elif dtype == t_dtype.DTYPE_TIME:
             # return unix timestamps for time
             if isinstance(val, str):
                 parsed = self._date_validator.parse(val)
                 val = self._date_validator.to_timestamp(parsed)
             else:
                 val = self._date_validator.to_timestamp(val)
-        elif type == t_dtype.DTYPE_STR:
+        elif dtype == t_dtype.DTYPE_STR:
             if isinstance(val, (bytes, bytearray)):
                 val = val.decode("utf-8")
             else:
-                val = str(val)
-
+                if six.PY2:
+                    # six.u mangles quotes with escape sequences - use native unicode()
+                    val = unicode(val)  # noqa: F821
+                else:
+                    val = str(val)
         return val
 
-    def _is_numpy_column(self, name):
-        '''For columnar datasets, return whether the underlying data is a Numpy array.'''
-        if self._format == 1:
-            data = self._data_or_schema.get(name, None)
-            return isinstance(data, numpy.ndarray)
-        return False
-
-    def _get_numpy_column(self, name, type):
+    def _get_numpy_column(self, name):
         '''For columnar datasets, return the list/Numpy array that contains the data for a single column.
 
         Args:
@@ -205,10 +213,12 @@ class _PerspectiveAccessor(object):
         Returns:
             list/numpy.array/None : returns the column's data, or None if it cannot be found.
         '''
-        if self._is_numpy_column(name):
-            return deconstruct_numpy(self._data_or_schema.get(name, None))
-        else:
-            return None
+        data = self._data_or_schema.get(name, None)
+        if data is None:
+            raise PerspectiveError("Column `{0}` does not exist.".format(name))
+        if not isinstance(data, numpy.ndarray):
+            raise PerspectiveError("Mixed datasets of numpy.ndarray and lists are not supported.")
+        return deconstruct_numpy(data)
 
     def _has_column(self, ridx, name):
         '''Given a column name, validate that it is in the row.
